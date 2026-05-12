@@ -1,0 +1,28 @@
+.btn {
+  background-color: var(--accent);
+  color: var(--text-primary);
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-small {
+  padding: 3px 7px;
+  font-size: 10px;
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #e53935;
+}

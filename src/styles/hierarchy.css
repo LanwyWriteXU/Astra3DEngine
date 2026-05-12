@@ -1,0 +1,65 @@
+.hierarchy-panel {
+  flex: 1;
+  min-height: 200px;
+}
+
+.hierarchy-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 6px;
+  margin: 1px 0;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.hierarchy-item:hover {
+  background-color: rgba(64, 120, 192, 0.2);
+}
+
+.hierarchy-item.selected {
+  background-color: var(--accent-active);
+}
+
+.hierarchy-item-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  opacity: 0.7;
+}
+
+.hierarchy-item-name {
+  flex: 1;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.delete-btn:hover {
+  color: var(--danger);
+  background-color: rgba(244, 67, 54, 0.2);
+}
+
+.hierarchy-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.hierarchy-actions {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-top: 1px solid var(--border);
+}

@@ -1,0 +1,86 @@
+.viewport-container {
+  flex: 1;
+  position: relative;
+  background-color: #000000;
+  overflow: hidden;
+}
+
+.viewport-container canvas {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.viewport-toolbar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+}
+
+.viewport-tool-btn {
+  width: 28px;
+  height: 28px;
+  background-color: rgba(34, 34, 34, 0.9);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.viewport-tool-btn:hover {
+  background-color: rgba(64, 120, 192, 0.3);
+  border-color: var(--accent-active);
+}
+
+.viewport-tool-btn.active {
+  background-color: var(--accent-active);
+  border-color: var(--accent-active);
+}
+
+.viewport-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.viewport-label {
+  background-color: rgba(34, 34, 34, 0.9);
+  color: var(--text-secondary);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.view-cube {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 80px;
+  height: 80px;
+  z-index: 100;
+  cursor: grab;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: rgba(34, 34, 34, 0.5);
+  border: 1px solid var(--border);
+}
+
+.view-cube:active {
+  cursor: grabbing;
+}
+
+.view-cube canvas {
+  display: block;
+}

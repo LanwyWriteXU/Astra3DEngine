@@ -1,0 +1,82 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-toolbar);
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  height: 32px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+}
+
+.toolbar-logo {
+  display: flex;
+  align-items: center;
+  padding: 2px 2px;
+  border-right: 1px solid var(--border);
+  margin-right: 2px;
+}
+
+.toolbar-logo svg {
+  display: block;
+}
+
+.toolbar-menus {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 4px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 0.15s;
+}
+
+.menu-btn:hover {
+  background-color: var(--bg-panel);
+}
+
+.toolbar-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+  background-color: var(--bg-panel);
+  border-color: var(--accent);
+}
+
+.toolbar-btn.play {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: white;
+}
+
+.toolbar-btn.stop {
+  background-color: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}

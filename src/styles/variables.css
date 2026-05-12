@@ -1,0 +1,13 @@
+:root {
+  --bg-dark: #111111;
+  --bg-panel: #1a1a1a;
+  --bg-toolbar: #222222;
+  --accent: #555555;
+  --accent-hover: #666666;
+  --accent-active: #4078c0;
+  --text-primary: #cccccc;
+  --text-secondary: #888888;
+  --border: #333333;
+  --success: #4caf50;
+  --danger: #f44336;
+}
