@@ -27,7 +27,7 @@ Astra 3D Engine 是一个基于Web的3D游戏引擎编辑器，灵感来源于Un
 ### 编辑器技术栈
 
 ```
-前端框架：React 18 + TypeScript
+前端框架：React 18 + JavaScript
 状态管理：Zustand（轻量）或 Redux Toolkit
 3D渲染：Three.js + @react-three/fiber（如果用React）
 物理引擎：Ammo.js（Web版PhysX）或 Cannon.js
@@ -100,46 +100,6 @@ interface Scene {
   activeCamera: CameraComponent;
 }
 ```
-
-### 目录结构建议
-
-```
-Astra3DEngine/
-├── packages/
-│   ├── core/                 # 引擎核心（场景管理、对象系统）
-│   │   ├── src/
-│   │   │   ├── scene/
-│   │   │   ├── object/
-│   │   │   ├── component/
-│   │   │   └── index.ts
-│   │   └── package.json
-│   │
-│   ├── renderer/             # Three.js渲染器封装
-│   │   ├── src/
-│   │   │   ├── webgl/
-│   │   │   ├── materials/
-│   │   │   └── index.ts
-│   │   └── package.json
-│   │
-│   ├── physics/              # 物理引擎封装
-│   │   ├── src/
-│   │   └── package.json
-│   │
-│   └── editor/               # 编辑器UI（可选，最后导出）
-│       ├── src/
-│       │   ├── components/   # React组件
-│       │   ├── panels/        # 各面板
-│       │   ├── viewport/      # 视口
-│       │   └── App.tsx
-│       └── package.json
-│
-├── examples/                  # 示例项目
-├── documentation/             # 文档
-├── package.json               # 根目录workspace配置
-└── README.md
-```
-
----
 
 ## 三、关键功能模块规划
 
