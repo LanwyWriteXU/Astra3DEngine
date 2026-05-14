@@ -1,12 +1,76 @@
 import React from 'react';
 import { msg, localeNames } from '../i18n/index.js';
+import DropdownMenu from './DropdownMenu.jsx';
 
-function Toolbar({ isPlaying, setIsPlaying, onToggleLocale, currentLocale }) {
-  const menus = [
-    { id: 'file', labelKey: 'menu.file' },
-    { id: 'edit', labelKey: 'menu.edit' },
-    { id: 'view', labelKey: 'menu.view' },
-    { id: 'run', labelKey: 'menu.run' }
+function Toolbar({ 
+  isPlaying, 
+  setIsPlaying, 
+  onToggleLocale, 
+  currentLocale,
+  onSaveProject,
+  onLoadProject,
+  onNewProject
+}) {
+  const fileMenuItems = [
+    {
+      label: msg('menu.newProject'),
+      icon: '📄',
+      shortcut: 'Ctrl+N',
+      onClick: onNewProject
+    },
+    {
+      label: msg('menu.openProject'),
+      icon: '📂',
+      shortcut: 'Ctrl+O',
+      onClick: onLoadProject
+    },
+    { divider: true },
+    {
+      label: msg('menu.saveProject'),
+      icon: '💾',
+      shortcut: 'Ctrl+S',
+      onClick: onSaveProject
+    },
+    {
+      label: msg('menu.saveAs'),
+      icon: '📁',
+      onClick: onSaveProject
+    }
+  ];
+
+  const editMenuItems = [
+    {
+      label: msg('menu.undo'),
+      icon: '↩️',
+      shortcut: 'Ctrl+Z',
+      disabled: true
+    },
+    {
+      label: msg('menu.redo'),
+      icon: '↪️',
+      shortcut: 'Ctrl+Y',
+      disabled: true
+    }
+  ];
+
+  const viewMenuItems = [
+    {
+      label: msg('viewport.perspective'),
+      icon: '🎯'
+    },
+    {
+      label: msg('viewport.orthographic'),
+      icon: '📦'
+    }
+  ];
+
+  const runMenuItems = [
+    {
+      label: isPlaying ? msg('toolbar.stop') : msg('toolbar.play'),
+      icon: isPlaying ? '⏹️' : '▶️',
+      shortcut: 'F5',
+      onClick: () => setIsPlaying(!isPlaying)
+    }
   ];
 
   return (
@@ -29,11 +93,22 @@ function Toolbar({ isPlaying, setIsPlaying, onToggleLocale, currentLocale }) {
           </svg>
         </div>
         <div className="toolbar-menus">
-          {menus.map(menu => (
-            <button key={menu.id} className="menu-btn">
-              {msg(menu.labelKey)}
-            </button>
-          ))}
+          <DropdownMenu 
+            label={msg('menu.file')} 
+            items={fileMenuItems} 
+          />
+          <DropdownMenu 
+            label={msg('menu.edit')} 
+            items={editMenuItems} 
+          />
+          <DropdownMenu 
+            label={msg('menu.view')} 
+            items={viewMenuItems} 
+          />
+          <DropdownMenu 
+            label={msg('menu.run')} 
+            items={runMenuItems} 
+          />
         </div>
       </div>
 

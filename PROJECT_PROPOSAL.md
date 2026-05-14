@@ -194,11 +194,11 @@ interface Scene {
 
 ### Phase 1: 核心框架 (MVP)
 
-- [x] [已完成] 项目初始化（Vite + React + Three.js）
-- [x] [已完成] 基础场景管理（创建/删除/层级）
-- [x] [已完成] 简单视口（相机控制 + 网格）
-- [x] [已完成] Transform组件和Gizmos（移动/旋转/缩放工具）
-- [ ] 基础资源加载（GLTF）
+- [x] 项目初始化（Vite + React + Three.js）
+- [x] 基础场景管理（创建/删除/层级）
+- [x] 简单视口（相机控制 + 网格）
+- [x] Transform组件和Gizmos（移动/旋转/缩放工具）
+- [x] 基础资源加载（GLTF）
 
 **目标**：能够打开编辑器，看到3D场景，创建简单物体并保存
 
@@ -225,6 +225,7 @@ interface Scene {
 
 ### Phase 4: 高级功能
 
+- [ ] 脚本编码（查看[代码设计](./SCRIPT_SYSTEM_DESIGN.md)）
 - [ ] 光照系统（烘焙）
 - [ ] 地形系统
 - [ ] 粒子系统

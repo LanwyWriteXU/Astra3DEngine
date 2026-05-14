@@ -48,4 +48,7 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# AI context files
+ai_context/
 .cache/

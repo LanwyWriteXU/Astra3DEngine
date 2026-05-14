@@ -143,6 +143,88 @@ function App() {
     setSelectedObject(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
   }, []);
 
+  const handleSaveProject = useCallback(() => {
+    const projectData = {
+      version: '0.1.0',
+      name: 'Untitled Project',
+      timestamp: new Date().toISOString(),
+      scene: {
+        objects: sceneObjects.map(obj => ({
+          id: obj.id,
+          name: obj.name,
+          type: obj.type,
+          position: obj.position,
+          rotation: obj.rotation,
+          scale: obj.scale,
+          color: obj.color,
+          assetId: obj.assetId,
+          isModel: obj.isModel
+        }))
+      },
+      assets: assets.map(asset => ({
+        id: asset.id,
+        name: asset.name,
+        type: asset.type,
+        assetType: asset.assetType
+      }))
+    };
+
+    const jsonString = JSON.stringify(projectData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `astra_project_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [sceneObjects, assets]);
+
+  const handleLoadProject = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const projectData = JSON.parse(event.target.result);
+          
+          if (projectData.version && projectData.scene) {
+            setSceneObjects(projectData.scene.objects || []);
+            setSelectedObject(null);
+            console.log('Project loaded successfully:', projectData.name);
+          } else {
+            console.error('Invalid project file format');
+          }
+        } catch (error) {
+          console.error('Error parsing project file:', error);
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }, []);
+
+  const handleNewProject = useCallback(() => {
+    if (sceneObjects.length > 0) {
+      const confirmNew = window.confirm(msg('menu.confirmNew'));
+      if (!confirmNew) return;
+    }
+    
+    setSceneObjects([]);
+    setSelectedObject(null);
+    setAssets([]);
+    setSelectedAsset(null);
+  }, [sceneObjects.length]);
+
   return (
     <div className="app-container">
       <Toolbar
@@ -150,6 +232,9 @@ function App() {
         setIsPlaying={setIsPlaying}
         onToggleLocale={handleToggleLocale}
         currentLocale={locale}
+        onSaveProject={handleSaveProject}
+        onLoadProject={handleLoadProject}
+        onNewProject={handleNewProject}
       />
 
       <div className="main-content-wrapper">

@@ -6,6 +6,13 @@
   "menu.edit": "Edit(E)",
   "menu.view": "View(V)",
   "menu.run": "Run(R)",
+  "menu.newProject": "New Project",
+  "menu.openProject": "Open Project",
+  "menu.saveProject": "Save Project",
+  "menu.saveAs": "Save As...",
+  "menu.undo": "Undo",
+  "menu.redo": "Redo",
+  "menu.confirmNew": "Current scene is unsaved. Are you sure you want to create a new project?",
 
   "toolbar.play": "▶ Play",
   "toolbar.stop": "■ Stop",

@@ -6,6 +6,13 @@
   "menu.edit": "编辑(E)",
   "menu.view": "视图(V)",
   "menu.run": "运行(R)",
+  "menu.newProject": "新建项目",
+  "menu.openProject": "打开项目",
+  "menu.saveProject": "保存项目",
+  "menu.saveAs": "另存为...",
+  "menu.undo": "撤销",
+  "menu.redo": "重做",
+  "menu.confirmNew": "当前场景未保存，确定要新建项目吗？",
 
   "toolbar.play": "▶ 运行",
   "toolbar.stop": "■ 停止",
