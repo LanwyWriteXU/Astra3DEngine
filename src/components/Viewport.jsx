@@ -179,16 +179,11 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       renderer.render(scene, activeCamera);
       
       if (viewCubeRendererRef.current && viewCubeSceneRef.current && viewCubeCameraRef.current && viewCubeMeshRef.current) {
+        viewCubeCameraRef.current.quaternion.copy(activeCamera.quaternion);
+        
         const direction = new THREE.Vector3();
         activeCamera.getWorldDirection(direction);
         viewCubeCameraRef.current.position.copy(direction).negate().multiplyScalar(3);
-        
-        if (Math.abs(direction.y) > 0.9999) {
-          viewCubeCameraRef.current.up.set(0, 0, 1);
-        } else {
-          viewCubeCameraRef.current.up.set(0, 1, 0);
-        }
-        viewCubeCameraRef.current.lookAt(0, 0, 0);
         
         if (viewCubeOrthoCameraRef.current) {
           viewCubeOrthoCameraRef.current.position.copy(viewCubeCameraRef.current.position);
@@ -492,13 +487,6 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
           const easeT = t * (2 - t);
           
           cameraRef.current.position.lerpVectors(startPos, targetPos, easeT);
-          
-          const viewDir = new THREE.Vector3().subVectors(target, cameraRef.current.position).normalize();
-          if (Math.abs(viewDir.y) > 0.9999) {
-            cameraRef.current.up.set(0, 0, 1);
-          } else {
-            cameraRef.current.up.set(0, 1, 0);
-          }
           cameraRef.current.lookAt(target);
           
           if (t < 1) {
