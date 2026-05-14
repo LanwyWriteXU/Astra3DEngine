@@ -179,7 +179,22 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       renderer.render(scene, activeCamera);
       
       if (viewCubeRendererRef.current && viewCubeSceneRef.current && viewCubeCameraRef.current && viewCubeMeshRef.current) {
-        viewCubeMeshRef.current.quaternion.copy(activeCamera.quaternion).invert();
+        const direction = new THREE.Vector3();
+        activeCamera.getWorldDirection(direction);
+        viewCubeCameraRef.current.position.copy(direction).negate().multiplyScalar(3);
+        
+        if (Math.abs(direction.y) > 0.9999) {
+          viewCubeCameraRef.current.up.set(0, 0, 1);
+        } else {
+          viewCubeCameraRef.current.up.set(0, 1, 0);
+        }
+        viewCubeCameraRef.current.lookAt(0, 0, 0);
+        
+        if (viewCubeOrthoCameraRef.current) {
+          viewCubeOrthoCameraRef.current.position.copy(viewCubeCameraRef.current.position);
+          viewCubeOrthoCameraRef.current.quaternion.copy(viewCubeCameraRef.current.quaternion);
+        }
+        
         const viewCubeActiveCamera = cameraTypeRef.current === 'orthographic' ? viewCubeOrthoCameraRef.current : viewCubeCameraRef.current;
         viewCubeRendererRef.current.render(viewCubeSceneRef.current, viewCubeActiveCamera);
       }
@@ -220,7 +235,7 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
     viewCubeSceneRef.current = viewCubeScene;
     
     const viewCubeCamera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
-    viewCubeCamera.position.set(0, 0, 3);
+    viewCubeCamera.position.set(2, 2, 2);
     viewCubeCamera.lookAt(0, 0, 0);
     viewCubeCameraRef.current = viewCubeCamera;
     
@@ -445,19 +460,14 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       
       if (intersects.length > 0 && cameraRef.current) {
         const intersection = intersects[0];
-        const intersectPoint = intersection.point.clone();
-        
-        const inverseMatrix = new THREE.Matrix4().copy(viewCubeMesh.matrixWorld).invert();
-        intersectPoint.applyMatrix4(inverseMatrix);
-        
-        const direction = intersectPoint.clone().normalize();
+        const intersectPoint = intersection.point.clone().normalize();
         
         let bestMatch = faceNormals[0];
-        let bestDot = direction.dot(faceNormals[0]);
+        let bestDot = intersectPoint.dot(faceNormals[0]);
         let bestIndex = 0;
         
         for (let i = 1; i < faceNormals.length; i++) {
-          const dot = direction.dot(faceNormals[i]);
+          const dot = intersectPoint.dot(faceNormals[i]);
           if (dot > bestDot) {
             bestDot = dot;
             bestMatch = faceNormals[i];
@@ -468,11 +478,11 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
         updateFaceColor(bestIndex);
         
         const target = orbitControlsRef.current ? orbitControlsRef.current.target.clone() : new THREE.Vector3(0, 0, 0);
-        const offset = cameraRef.current.position.clone().sub(target);
-        const distance = offset.length();
-        const targetPosition = bestMatch.clone().multiplyScalar(distance).add(target);
+        const distance = cameraRef.current.position.distanceTo(target);
         
         const startPos = cameraRef.current.position.clone();
+        const targetPos = bestMatch.clone().multiplyScalar(distance).add(target);
+        
         const startTime = Date.now();
         const duration = 300;
         
@@ -481,7 +491,14 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
           const t = Math.min(elapsed / duration, 1);
           const easeT = t * (2 - t);
           
-          cameraRef.current.position.lerpVectors(startPos, targetPosition, easeT);
+          cameraRef.current.position.lerpVectors(startPos, targetPos, easeT);
+          
+          const viewDir = new THREE.Vector3().subVectors(target, cameraRef.current.position).normalize();
+          if (Math.abs(viewDir.y) > 0.9999) {
+            cameraRef.current.up.set(0, 0, 1);
+          } else {
+            cameraRef.current.up.set(0, 1, 0);
+          }
           cameraRef.current.lookAt(target);
           
           if (t < 1) {
@@ -510,17 +527,20 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       const deltaX = e.clientX - previousMousePosition.x;
       const deltaY = e.clientY - previousMousePosition.y;
       
+      const target = orbitControlsRef.current.target.clone();
+      const offset = cameraRef.current.position.clone().sub(target);
+      
       const spherical = new THREE.Spherical();
-      spherical.setFromVector3(cameraRef.current.position);
+      spherical.setFromVector3(offset);
       
       spherical.theta -= deltaX * 0.01;
       spherical.phi -= deltaY * 0.01;
       
       spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
       
-      cameraRef.current.position.setFromSpherical(spherical);
-      cameraRef.current.lookAt(0, 0, 0);
-      orbitControlsRef.current.target.set(0, 0, 0);
+      const newOffset = new THREE.Vector3().setFromSpherical(spherical);
+      cameraRef.current.position.copy(target).add(newOffset);
+      cameraRef.current.lookAt(target);
       
       previousMousePosition = { x: e.clientX, y: e.clientY };
     };
