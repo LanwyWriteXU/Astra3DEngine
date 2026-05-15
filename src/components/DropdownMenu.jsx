@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-function DropdownMenu({ label, items, className = '' }) {
+function DropdownMenu({ label, items, className = '', roundedCorners = 'all', position = 'bottom' }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -22,6 +22,21 @@ function DropdownMenu({ label, items, className = '' }) {
     setIsOpen(false);
   };
 
+  const getRoundedClass = () => {
+    if (typeof roundedCorners === 'string') {
+      return `dropdown-rounded-${roundedCorners}`;
+    }
+    
+    const classes = [];
+    if (roundedCorners.topLeft) classes.push('dropdown-rounded-tl');
+    if (roundedCorners.topRight) classes.push('dropdown-rounded-tr');
+    if (roundedCorners.bottomLeft) classes.push('dropdown-rounded-bl');
+    if (roundedCorners.bottomRight) classes.push('dropdown-rounded-br');
+    return classes.join(' ');
+  };
+
+  const positionClass = position === 'top' ? 'dropdown-position-top' : '';
+
   return (
     <div className={`dropdown-menu ${className}`} ref={menuRef}>
       <button
@@ -31,7 +46,7 @@ function DropdownMenu({ label, items, className = '' }) {
         {label}
       </button>
       {isOpen && (
-        <div className="dropdown-content">
+        <div className={`dropdown-content ${getRoundedClass()} ${positionClass}`}>
           {items.map((item, index) => (
             <React.Fragment key={index}>
               {item.divider ? (

@@ -4,8 +4,16 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { msg } from '../i18n/index.js';
+import DropdownMenu from './DropdownMenu.jsx';
 
-function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool, onToolChange, isPlaying, onUpdateObject }) {
+import IconSelect from '../icons/select.svg?react';
+import IconMove from '../icons/move.svg?react';
+import IconRotate from '../icons/rotate.svg?react';
+import IconScale from '../icons/scale.svg?react';
+import IconUniformScale from '../icons/uniform-scale.svg?react';
+import IconChevronDown from '../icons/chevron-down.svg?react';
+
+function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool, onToolChange, isPlaying, onUpdateObject, theme = 'dark' }) {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -51,7 +59,7 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
     const height = containerRef.current.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a1a2e);
+    scene.background = new THREE.Color(theme === 'light' ? 0xf0f0f0 : 0x1a1a2e);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
@@ -70,7 +78,7 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
+    const gridHelper = new THREE.GridHelper(10, 10, 0x888888, 0x666666);
     scene.add(gridHelper);
 
     const axesHelper = new THREE.AxesHelper(2);
@@ -220,6 +228,12 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    
+    sceneRef.current.background = new THREE.Color(theme === 'light' ? 0xf0f0f0 : 0x1a1a2e);
+  }, [theme]);
 
   useEffect(() => {
     if (!viewCubeRef.current) return;
@@ -450,7 +464,8 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       
-      raycaster.setFromCamera(mouse, viewCubeCamera);
+      const activeViewCubeCamera = cameraTypeRef.current === 'orthographic' ? viewCubeOrthoCameraRef.current : viewCubeCamera;
+      raycaster.setFromCamera(mouse, activeViewCubeCamera);
       const intersects = raycaster.intersectObject(hitMesh);
       
       if (intersects.length > 0 && cameraRef.current) {
@@ -785,10 +800,21 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
   }, [isPlaying]);
 
   const tools = [
-    { id: 'select', labelKey: 'tool.select', icon: '↖' },
-    { id: 'move', labelKey: 'tool.move', icon: '✥' },
-    { id: 'rotate', labelKey: 'tool.rotate', icon: '↻' },
-    { id: 'scale', labelKey: 'tool.scale', icon: '⤢' }
+    { id: 'select', labelKey: 'tool.select', icon: <IconSelect className="tool-icon" /> },
+    { id: 'move', labelKey: 'tool.move', icon: <IconMove className="tool-icon" /> },
+    { id: 'rotate', labelKey: 'tool.rotate', icon: <IconRotate className="tool-icon" /> },
+    { id: 'scale', labelKey: 'tool.scale', icon: <IconScale className="tool-icon" /> }
+  ];
+
+  const cameraModeItems = [
+    {
+      label: msg('viewport.perspective'),
+      onClick: () => setCameraType('perspective')
+    },
+    {
+      label: msg('viewport.orthographic'),
+      onClick: () => setCameraType('orthographic')
+    }
   ];
 
   return (
@@ -810,7 +836,7 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
             onClick={() => setUniformScale(!uniformScale)}
             title={uniformScale ? msg('tool.uniformScaleOn') : msg('tool.uniformScaleOff')}
           >
-            🔗
+            <IconUniformScale className="tool-icon" />
           </button>
         )}
       </div>
@@ -822,15 +848,14 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
       <div className="view-cube" ref={viewCubeRef} />
       <div className="viewport-dock">
         <div className="viewport-dock-item">
-          <label className="viewport-dock-label">{msg('viewport.cameraMode')}:</label>
-          <select
-            className="viewport-dock-select"
-            value={cameraType}
-            onChange={(e) => setCameraType(e.target.value)}
-          >
-            <option value="perspective">{msg('viewport.perspective')}</option>
-            <option value="orthographic">{msg('viewport.orthographic')}</option>
-          </select>
+          <span className="viewport-dock-label">{msg('viewport.cameraMode')}:</span>
+          <DropdownMenu
+            label={cameraType === 'perspective' ? msg('viewport.perspective') : msg('viewport.orthographic')}
+            items={cameraModeItems}
+            roundedCorners="all"
+            className="camera-mode-dropdown"
+            position="top"
+          />
         </div>
       </div>
     </div>

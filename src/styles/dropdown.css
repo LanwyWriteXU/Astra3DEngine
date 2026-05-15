@@ -6,15 +6,15 @@
 .dropdown-trigger {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .dropdown-trigger::after {
   content: '';
   border-style: solid;
-  border-width: 4px 4px 0 4px;
+  border-width: 3px 3px 0 3px;
   border-color: var(--text-secondary) transparent transparent transparent;
-  margin-left: 4px;
+  margin-left: 2px;
   transition: transform 0.15s;
 }
 
@@ -26,26 +26,65 @@
   position: absolute;
   top: 100%;
   left: 0;
-  min-width: 180px;
+  min-width: 160px;
   background-color: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   z-index: 1000;
-  padding: 4px 0;
-  margin-top: 2px;
+  padding: 2px 0;
+  margin-top: 1px;
+}
+
+.dropdown-position-top {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 1px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.dropdown-rounded-all {
+  border-radius: 4px;
+}
+
+.dropdown-rounded-none {
+  border-radius: 0;
+}
+
+.dropdown-rounded-top {
+  border-radius: 4px 4px 0 0;
+}
+
+.dropdown-rounded-bottom {
+  border-radius: 0 0 4px 4px;
+}
+
+.dropdown-rounded-tl {
+  border-top-left-radius: 4px;
+}
+
+.dropdown-rounded-tr {
+  border-top-right-radius: 4px;
+}
+
+.dropdown-rounded-bl {
+  border-bottom-left-radius: 4px;
+}
+
+.dropdown-rounded-br {
+  border-bottom-right-radius: 4px;
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 8px 12px;
+  padding: 5px 8px;
   background: transparent;
   border: none;
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   text-align: left;
   transition: background-color 0.15s;
 }
@@ -62,9 +101,22 @@
 }
 
 .dropdown-icon {
-  width: 20px;
-  margin-right: 8px;
-  text-align: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menu-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-primary);
+}
+
+.menu-icon path {
+  fill: currentColor;
 }
 
 .dropdown-label {
@@ -73,8 +125,8 @@
 
 .dropdown-shortcut {
   color: var(--text-muted);
-  font-size: 11px;
-  margin-left: 12px;
+  font-size: 10px;
+  margin-left: 8px;
 }
 
 .dropdown-item:hover:not(.disabled) .dropdown-shortcut {
@@ -84,5 +136,5 @@
 .dropdown-divider {
   height: 1px;
   background-color: var(--border);
-  margin: 4px 8px;
+  margin: 2px 4px;
 }

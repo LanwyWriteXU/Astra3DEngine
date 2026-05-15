@@ -13,6 +13,11 @@
   "menu.undo": "撤销",
   "menu.redo": "重做",
   "menu.confirmNew": "当前场景未保存，确定要新建项目吗？",
+  "menu.theme": "明亮/暗色模式",
+  "menu.lightMode": "明亮模式",
+  "menu.darkMode": "暗色模式",
+  "menu.language": "语言",
+  "menu.preferences": "首选项",
 
   "toolbar.play": "▶ 运行",
   "toolbar.stop": "■ 停止",

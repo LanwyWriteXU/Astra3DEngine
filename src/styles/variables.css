@@ -7,7 +7,23 @@
   --accent-active: #4078c0;
   --text-primary: #cccccc;
   --text-secondary: #888888;
+  --text-muted: #666666;
   --border: #333333;
+  --success: #4caf50;
+  --danger: #f44336;
+}
+
+[data-theme="light"] {
+  --bg-dark: #f5f5f5;
+  --bg-panel: #ffffff;
+  --bg-toolbar: #f0f0f0;
+  --accent: #e0e0e0;
+  --accent-hover: #d0d0d0;
+  --accent-active: #4078c0;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --border: #cccccc;
   --success: #4caf50;
   --danger: #f44336;
 }

@@ -13,6 +13,11 @@
   "menu.undo": "Undo",
   "menu.redo": "Redo",
   "menu.confirmNew": "Current scene is unsaved. Are you sure you want to create a new project?",
+  "menu.theme": "Light/Dark Mode",
+  "menu.lightMode": "Light Mode",
+  "menu.darkMode": "Dark Mode",
+  "menu.language": "Language",
+  "menu.preferences": "Preferences",
 
   "toolbar.play": "▶ Play",
   "toolbar.stop": "■ Stop",

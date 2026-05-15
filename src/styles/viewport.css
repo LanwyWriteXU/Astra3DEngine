@@ -1,7 +1,7 @@
 .viewport-container {
   flex: 1;
   position: relative;
-  background-color: #000000;
+  background-color: var(--bg-dark);
   overflow: hidden;
 }
 
@@ -24,7 +24,7 @@
 .viewport-tool-btn {
   width: 28px;
   height: 28px;
-  background-color: rgba(34, 34, 34, 0.9);
+  background-color: var(--bg-panel);
   border: 1px solid var(--border);
   color: var(--text-primary);
   border-radius: 3px;
@@ -36,8 +36,13 @@
   transition: all 0.15s;
 }
 
+.tool-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .viewport-tool-btn:hover {
-  background-color: rgba(64, 120, 192, 0.3);
+  background-color: var(--accent-hover);
   border-color: var(--accent-active);
 }
 
@@ -56,7 +61,7 @@
 }
 
 .viewport-label {
-  background-color: rgba(34, 34, 34, 0.9);
+  background-color: var(--bg-panel);
   color: var(--text-secondary);
   padding: 3px 6px;
   border-radius: 3px;
@@ -73,7 +78,7 @@
   cursor: grab;
   border-radius: 8px;
   overflow: hidden;
-  background-color: rgba(34, 34, 34, 0.5);
+  background-color: var(--bg-panel);
   border: 1px solid var(--border);
 }
 
@@ -91,7 +96,7 @@
   left: 0;
   right: 0;
   height: 32px;
-  background-color: rgba(34, 34, 34, 0.95);
+  background-color: var(--bg-toolbar);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -112,7 +117,7 @@
 }
 
 .viewport-dock-select {
-  background-color: rgba(50, 50, 50, 0.9);
+  background-color: var(--bg-panel);
   border: 1px solid var(--border);
   color: var(--text-primary);
   padding: 3px 8px;
@@ -128,4 +133,27 @@
 
 .viewport-dock-select:focus {
   border-color: var(--accent-active);
+}
+
+.camera-mode-dropdown {
+  display: inline-flex;
+}
+
+.camera-mode-dropdown .menu-btn {
+  background-color: var(--bg-panel);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.camera-mode-dropdown .menu-btn:hover {
+  border-color: var(--accent-active);
+}
+
+.camera-mode-dropdown .dropdown-content {
+  min-width: 100px;
 }

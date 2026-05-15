@@ -32,8 +32,3 @@ export function msg(key, params = {}) {
 export function toggleLocale() {
   currentLocale = currentLocale === 'en' ? 'zh' : 'en';
 }
-
-export const localeNames = {
-  en: 'English',
-  zh: '中文'
-};

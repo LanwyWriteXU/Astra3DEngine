@@ -1,53 +1,69 @@
 import React from 'react';
-import { msg, localeNames } from '../i18n/index.js';
+import { msg } from '../i18n/index.js';
 import DropdownMenu from './DropdownMenu.jsx';
+
+import IconNewProject from '../icons/new-project.svg?react';
+import IconOpenProject from '../icons/open-project.svg?react';
+import IconSave from '../icons/save.svg?react';
+import IconSaveAs from '../icons/save-as.svg?react';
+import IconUndo from '../icons/undo.svg?react';
+import IconRedo from '../icons/redo.svg?react';
+import IconTheme from '../icons/theme.svg?react';
+import IconLanguage from '../icons/language.svg?react';
+import IconSettings from '../icons/settings.svg?react';
+import IconPlay from '../icons/play.svg?react';
+import IconStop from '../icons/stop.svg?react';
 
 function Toolbar({ 
   isPlaying, 
   setIsPlaying, 
-  onToggleLocale, 
-  currentLocale,
+  onToggleLocale,
   onSaveProject,
+  onSaveAsProject,
   onLoadProject,
-  onNewProject
+  onNewProject,
+  projectFileName,
+  onToggleTheme,
+  theme
 }) {
   const fileMenuItems = [
     {
       label: msg('menu.newProject'),
-      icon: '📄',
-      shortcut: 'Ctrl+N',
+      icon: <IconNewProject className="menu-icon" />,
+      shortcut: 'Ctrl+Alt+N',
       onClick: onNewProject
     },
     {
       label: msg('menu.openProject'),
-      icon: '📂',
+      icon: <IconOpenProject className="menu-icon" />,
       shortcut: 'Ctrl+O',
       onClick: onLoadProject
     },
     { divider: true },
     {
       label: msg('menu.saveProject'),
-      icon: '💾',
+      icon: <IconSave className="menu-icon" />,
       shortcut: 'Ctrl+S',
       onClick: onSaveProject
     },
     {
       label: msg('menu.saveAs'),
-      icon: '📁',
-      onClick: onSaveProject
+      icon: <IconSaveAs className="menu-icon" />,
+      shortcut: 'Ctrl+Shift+S',
+      onClick: onSaveAsProject
     }
   ];
 
   const editMenuItems = [
     {
       label: msg('menu.undo'),
-      icon: '↩️',
+      icon: <IconUndo className="menu-icon" />,
       shortcut: 'Ctrl+Z',
       disabled: true
     },
     {
       label: msg('menu.redo'),
-      icon: '↪️',
+      icon: <IconRedo className="menu-icon" />,
       shortcut: 'Ctrl+Y',
       disabled: true
     }
@@ -55,19 +71,26 @@ function Toolbar({
 
   const viewMenuItems = [
     {
-      label: msg('viewport.perspective'),
-      icon: '🎯'
+      label: theme === 'dark' ? msg('menu.lightMode') : msg('menu.darkMode'),
+      icon: <IconTheme className="menu-icon" />,
+      onClick: onToggleTheme
     },
     {
-      label: msg('viewport.orthographic'),
-      icon: '📦'
+      label: msg('menu.language'),
+      icon: <IconLanguage className="menu-icon" />,
+      onClick: onToggleLocale
+    },
+    { divider: true },
+    {
+      label: msg('menu.preferences'),
+      icon: <IconSettings className="menu-icon" />
     }
   ];
 
   const runMenuItems = [
     {
       label: isPlaying ? msg('toolbar.stop') : msg('toolbar.play'),
-      icon: isPlaying ? '⏹️' : '▶️',
+      icon: isPlaying ? <IconStop className="menu-icon" /> : <IconPlay className="menu-icon" />,
       shortcut: 'F5',
       onClick: () => setIsPlaying(!isPlaying)
     }
@@ -95,37 +118,30 @@ function Toolbar({
         <div className="toolbar-menus">
           <DropdownMenu 
             label={msg('menu.file')} 
-            items={fileMenuItems} 
+            items={fileMenuItems}
+            roundedCorners="bottom"
           />
           <DropdownMenu 
             label={msg('menu.edit')} 
-            items={editMenuItems} 
+            items={editMenuItems}
+            roundedCorners="bottom"
           />
           <DropdownMenu 
             label={msg('menu.view')} 
-            items={viewMenuItems} 
+            items={viewMenuItems}
+            roundedCorners="bottom"
           />
           <DropdownMenu 
             label={msg('menu.run')} 
-            items={runMenuItems} 
+            items={runMenuItems}
+            roundedCorners="bottom"
           />
         </div>
-      </div>
-
-      <div className="toolbar-right">
-        <button
-          className={`toolbar-btn ${isPlaying ? 'stop' : 'play'}`}
-          onClick={() => setIsPlaying(!isPlaying)}
-        >
-          {isPlaying ? msg('toolbar.stop') : msg('toolbar.play')}
-        </button>
-        <button
-          className="menu-btn"
-          onClick={onToggleLocale}
-          title={localeNames[currentLocale === 'en' ? 'zh' : 'en']}
-        >
-          {currentLocale === 'en' ? '中文' : 'EN'}
-        </button>
+        {projectFileName && (
+          <div className="toolbar-filename">
+            <span className="filename-text">{projectFileName}</span>
+          </div>
+        )}
       </div>
     </div>
   );

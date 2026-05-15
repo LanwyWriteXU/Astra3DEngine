@@ -17,6 +17,15 @@ function App() {
   const [assets, setAssets] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const gltfLoaderRef = useRef(new GLTFLoader());
+  const fileHandleRef = useRef(null);
+  const [projectFileName, setProjectFileName] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('astra-theme');
+    return saved || 'dark';
+  });
+
+  const hasFileSystemAccess = 'showSaveFilePicker' in window && 'showOpenFilePicker' in window;
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -48,6 +57,18 @@ function App() {
     toggleLocale();
     setLocaleState(getLocale());
   }, []);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const newTheme = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('astra-theme', newTheme);
+      return newTheme;
+    });
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const handleObjectSelect = useCallback((object) => {
     setSelectedObject(object);
@@ -143,10 +164,10 @@ function App() {
     setSelectedObject(prev => prev && prev.id === id ? { ...prev, ...updates } : prev);
   }, []);
 
-  const handleSaveProject = useCallback(() => {
-    const projectData = {
+  const getProjectData = useCallback(() => {
+    return {
       version: '0.1.0',
-      name: 'Untitled Project',
+      name: projectFileName || 'Untitled Project',
       timestamp: new Date().toISOString(),
       scene: {
         objects: sceneObjects.map(obj => ({
@@ -168,38 +189,118 @@ function App() {
         assetType: asset.assetType
       }))
     };
+  }, [sceneObjects, assets, projectFileName]);
 
-    const jsonString = JSON.stringify(projectData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `astra_project_${Date.now()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [sceneObjects, assets]);
+  const writeToFile = async (handle, data) => {
+    const writable = await handle.createWritable();
+    await writable.write(JSON.stringify(data, null, 2));
+    await writable.close();
+  };
 
-  const handleLoadProject = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+  const handleSaveProject = useCallback(async () => {
+    const projectData = getProjectData();
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
+    if (hasFileSystemAccess && fileHandleRef.current) {
+      try {
+        await writeToFile(fileHandleRef.current, projectData);
+        setHasUnsavedChanges(false);
+        console.log('Project saved:', projectFileName);
+        return;
+      } catch (error) {
+        console.error('Error saving file:', error);
+      }
+    }
+
+    handleSaveAsProject();
+  }, [getProjectData, hasFileSystemAccess, projectFileName]);
+
+  const handleSaveAsProject = useCallback(async () => {
+    const projectData = getProjectData();
+
+    if (hasFileSystemAccess) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: projectFileName || 'astra_project.json',
+          types: [{
+            description: 'Astra Project',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        
+        fileHandleRef.current = handle;
+        setProjectFileName(handle.name);
+        await writeToFile(handle, projectData);
+        setHasUnsavedChanges(false);
+        console.log('Project saved as:', handle.name);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error saving file:', error);
+        }
+      }
+    } else {
+      const jsonString = JSON.stringify(projectData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = projectFileName || `astra_project_${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setHasUnsavedChanges(false);
+    }
+  }, [getProjectData, hasFileSystemAccess, projectFileName]);
+
+  const handleLoadProject = useCallback(async () => {
+    if (hasFileSystemAccess) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{
+            description: 'Astra Project',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        
+        const file = await handle.getFile();
+        const text = await file.text();
+        const projectData = JSON.parse(text);
+        
+        if (projectData.version && projectData.scene) {
+          fileHandleRef.current = handle;
+          setProjectFileName(handle.name);
+          setSceneObjects(projectData.scene.objects || []);
+          setSelectedObject(null);
+          setHasUnsavedChanges(false);
+          console.log('Project loaded:', handle.name);
+        } else {
+          console.error('Invalid project file format');
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Error loading file:', error);
+        }
+      }
+    } else {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
         try {
-          const projectData = JSON.parse(event.target.result);
+          const text = await file.text();
+          const projectData = JSON.parse(text);
           
           if (projectData.version && projectData.scene) {
+            setProjectFileName(file.name);
             setSceneObjects(projectData.scene.objects || []);
             setSelectedObject(null);
-            console.log('Project loaded successfully:', projectData.name);
+            setHasUnsavedChanges(false);
+            console.log('Project loaded:', file.name);
           } else {
             console.error('Invalid project file format');
           }
@@ -207,23 +308,56 @@ function App() {
           console.error('Error parsing project file:', error);
         }
       };
-      reader.readAsText(file);
-    };
-    
-    input.click();
-  }, []);
+      
+      input.click();
+    }
+  }, [hasFileSystemAccess]);
 
-  const handleNewProject = useCallback(() => {
-    if (sceneObjects.length > 0) {
+  const handleNewProject = useCallback(async () => {
+    if (hasUnsavedChanges || sceneObjects.length > 0) {
       const confirmNew = window.confirm(msg('menu.confirmNew'));
       if (!confirmNew) return;
     }
     
+    fileHandleRef.current = null;
+    setProjectFileName(null);
     setSceneObjects([]);
     setSelectedObject(null);
     setAssets([]);
     setSelectedAsset(null);
-  }, [sceneObjects.length]);
+    setHasUnsavedChanges(false);
+  }, [sceneObjects.length, hasUnsavedChanges]);
+
+  useEffect(() => {
+    const handleFileShortcuts = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      const modifier = e.ctrlKey || e.metaKey;
+      if (modifier) {
+        const key = e.key.toLowerCase();
+        
+        if (key === 's') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            handleSaveAsProject();
+          } else {
+            handleSaveProject();
+          }
+        } else if (key === 'o') {
+          e.preventDefault();
+          handleLoadProject();
+        }
+      }
+      
+      if (modifier && e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        handleNewProject();
+      }
+    };
+
+    document.addEventListener('keydown', handleFileShortcuts);
+    return () => document.removeEventListener('keydown', handleFileShortcuts);
+  }, [handleSaveProject, handleSaveAsProject, handleLoadProject, handleNewProject]);
 
   return (
     <div className="app-container">
@@ -231,10 +365,13 @@ function App() {
         isPlaying={isPlaying}
         setIsPlaying={setIsPlaying}
         onToggleLocale={handleToggleLocale}
-        currentLocale={locale}
         onSaveProject={handleSaveProject}
+        onSaveAsProject={handleSaveAsProject}
         onLoadProject={handleLoadProject}
         onNewProject={handleNewProject}
+        projectFileName={projectFileName}
+        onToggleTheme={handleToggleTheme}
+        theme={theme}
       />
 
       <div className="main-content-wrapper">
@@ -259,6 +396,7 @@ function App() {
               onToolChange={setCurrentTool}
               isPlaying={isPlaying}
               onUpdateObject={handleUpdateObject}
+              theme={theme}
             />
           </div>
 
