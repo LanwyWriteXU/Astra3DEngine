@@ -2,16 +2,42 @@ import React, { useState } from 'react';
 import { msg, getLocale, languages } from '../i18n/index.js';
 import IconClose from '../icons/close.svg?react';
 
-function PreferencesModal({ isOpen, onClose, theme, onToggleTheme, onToggleLocale, onSetLocale }) {
+function PreferencesModal({ 
+  isOpen, 
+  onClose, 
+  theme, 
+  onToggleTheme, 
+  onToggleLocale, 
+  onSetLocale,
+  autoSaveEnabled,
+  onToggleAutoSave,
+  maxSnapshots,
+  onSetMaxSnapshots
+}) {
   const [activeCategory, setActiveCategory] = useState('appearance');
+  const [localMaxSnapshots, setLocalMaxSnapshots] = useState(maxSnapshots);
   const currentLocale = getLocale();
 
   if (!isOpen) return null;
 
   const categories = [
     { id: 'appearance', label: msg('preferences.category.appearance') },
-    { id: 'language', label: msg('preferences.category.language') }
+    { id: 'language', label: msg('preferences.category.language') },
+    { id: 'autosave', label: msg('preferences.category.autosave') }
   ];
+
+  const handleMaxSnapshotsChange = (e) => {
+    const value = parseInt(e.target.value, 10);
+    if (value >= 1 && value <= 50) {
+      setLocalMaxSnapshots(value);
+    }
+  };
+
+  const handleMaxSnapshotsBlur = () => {
+    if (localMaxSnapshots !== maxSnapshots) {
+      onSetMaxSnapshots(localMaxSnapshots);
+    }
+  };
 
   const renderContent = () => {
     if (activeCategory === 'appearance') {
@@ -59,6 +85,43 @@ function PreferencesModal({ isOpen, onClose, theme, onToggleTheme, onToggleLocal
                 {currentLocale === lang.code && <span className="preference-option-check">✓</span>}
               </button>
             ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeCategory === 'autosave') {
+      return (
+        <div className="preferences-section">
+          <h3 className="preferences-section-title">{msg('preferences.autosave.title')}</h3>
+          <p className="preferences-section-description">{msg('preferences.autosave.description')}</p>
+          
+          <div className="preferences-options">
+            <button 
+              className={`preference-option-btn ${autoSaveEnabled ? 'active' : ''}`}
+              onClick={onToggleAutoSave}
+            >
+              <span className="preference-option-label">{msg('preferences.autosave.enabled')}</span>
+              {autoSaveEnabled && <span className="preference-option-check">✓</span>}
+            </button>
+          </div>
+          
+          <div className="preferences-section" style={{ marginTop: '20px' }}>
+            <h3 className="preferences-section-title">{msg('preferences.snapshots.title')}</h3>
+            <p className="preferences-section-description">{msg('preferences.snapshots.description')}</p>
+            <div className="preferences-input-row">
+              <label className="preferences-input-label">{msg('preferences.snapshots.maxCount')}</label>
+              <input 
+                type="number"
+                className="preferences-input"
+                value={localMaxSnapshots}
+                onChange={handleMaxSnapshotsChange}
+                onBlur={handleMaxSnapshotsBlur}
+                min={1}
+                max={50}
+              />
+              <span className="preferences-input-hint">1 - 50</span>
+            </div>
           </div>
         </div>
       );

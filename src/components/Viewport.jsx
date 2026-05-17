@@ -13,7 +13,26 @@ import IconScale from '../icons/scale.svg?react';
 import IconUniformScale from '../icons/uniform-scale.svg?react';
 import IconChevronDown from '../icons/chevron-down.svg?react';
 
-function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool, onToolChange, isPlaying, onUpdateObject, onRecordHistory, theme = 'dark' }) {
+function Viewport({ 
+  objects, 
+  assets, 
+  selectedObject, 
+  onSelectObject, 
+  currentTool, 
+  onToolChange, 
+  isPlaying, 
+  onUpdateObject, 
+  onRecordHistory, 
+  theme = 'dark',
+  initialCameraType,
+  initialCameraPosition,
+  initialCameraLookAt,
+  showToolbar = true,
+  showDock = true,
+  showViewCube = true,
+  viewLabel,
+  onCameraTypeChange
+}) {
   const containerRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
@@ -34,8 +53,8 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
   const viewCubeMeshRef = useRef(null);
   const viewCubeOrthoCameraRef = useRef(null);
   const orthographicCameraRef = useRef(null);
-  const [cameraType, setCameraType] = useState('perspective');
-  const cameraTypeRef = useRef('perspective');
+  const [cameraType, setCameraType] = useState(() => initialCameraType || 'perspective');
+  const cameraTypeRef = useRef(initialCameraType || 'perspective');
 
   useEffect(() => {
     cameraTypeRef.current = cameraType;
@@ -60,21 +79,29 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
+    let width = containerRef.current.clientWidth;
+    let height = containerRef.current.clientHeight;
+    
+    if (width === 0 || height === 0) {
+      width = 800;
+      height = 600;
+    }
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(theme === 'light' ? 0xf0f0f0 : 0x1a1a2e);
     sceneRef.current = scene;
 
+    const camPos = initialCameraPosition || [5, 5, 5];
+    const camLookAt = initialCameraLookAt || [0, 0, 0];
+
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.set(5, 5, 5);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(camPos[0], camPos[1], camPos[2]);
+    camera.lookAt(camLookAt[0], camLookAt[1], camLookAt[2]);
     cameraRef.current = camera;
 
     const orthographicCamera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.1, 1000);
-    orthographicCamera.position.set(5, 5, 5);
-    orthographicCamera.lookAt(0, 0, 0);
+    orthographicCamera.position.set(camPos[0], camPos[1], camPos[2]);
+    orthographicCamera.lookAt(camLookAt[0], camLookAt[1], camLookAt[2]);
     orthographicCameraRef.current = orthographicCamera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -646,15 +673,41 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
     objects.forEach(obj => {
       if (meshesRef.current[obj.id]) {
         const mesh = meshesRef.current[obj.id];
-        mesh.position.set(obj.position[0], obj.position[1], obj.position[2]);
-        mesh.rotation.set(
-          THREE.MathUtils.degToRad(obj.rotation[0]),
-          THREE.MathUtils.degToRad(obj.rotation[1]),
-          THREE.MathUtils.degToRad(obj.rotation[2])
-        );
-        mesh.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
-        if (mesh.material && mesh.material.color) {
-          mesh.material.color.setStyle(obj.color || '#4a90d9');
+        
+        if (obj.isModel && mesh.userData.isModel && mesh.children.length === 0) {
+          const asset = assetsRef.current.find(a => a.id === obj.assetId);
+          if (asset && asset.gltfScene) {
+            sceneRef.current.remove(mesh);
+            
+            const modelGroup = new THREE.Group();
+            const modelContent = asset.gltfScene.clone();
+            const center = asset.center || new THREE.Vector3(0, 0, 0);
+            modelContent.position.sub(center);
+            
+            modelGroup.add(modelContent);
+            modelGroup.position.set(obj.position[0], obj.position[1], obj.position[2]);
+            modelGroup.rotation.set(
+              THREE.MathUtils.degToRad(obj.rotation[0]),
+              THREE.MathUtils.degToRad(obj.rotation[1]),
+              THREE.MathUtils.degToRad(obj.rotation[2])
+            );
+            modelGroup.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
+            modelGroup.userData = { id: obj.id, isModel: true, assetSize: asset.size };
+
+            sceneRef.current.add(modelGroup);
+            meshesRef.current[obj.id] = modelGroup;
+          }
+        } else {
+          mesh.position.set(obj.position[0], obj.position[1], obj.position[2]);
+          mesh.rotation.set(
+            THREE.MathUtils.degToRad(obj.rotation[0]),
+            THREE.MathUtils.degToRad(obj.rotation[1]),
+            THREE.MathUtils.degToRad(obj.rotation[2])
+          );
+          mesh.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
+          if (mesh.material && mesh.material.color) {
+            mesh.material.color.setStyle(obj.color || '#4a90d9');
+          }
         }
       } else {
         if (obj.isModel && obj.assetId) {
@@ -717,7 +770,7 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
         meshesRef.current[obj.id] = mesh;
       }
     });
-  }, [objects]);
+  }, [objects, assets]);
 
   useEffect(() => {
     if (!transformControlsRef.current || !sceneRef.current) return;
@@ -738,10 +791,9 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
 
         if (mesh.userData.isModel) {
           const assetSize = mesh.userData.assetSize || new THREE.Vector3(1, 1, 1);
-          const size = assetSize.clone().multiply(mesh.scale);
           
           const outline = new THREE.LineSegments(
-            new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, size.y, size.z)),
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(assetSize.x, assetSize.y, assetSize.z)),
             new THREE.LineBasicMaterial({ color: 0x4a90d9, linewidth: 2 })
           );
           mesh.add(outline);
@@ -837,45 +889,49 @@ function Viewport({ objects, assets, selectedObject, onSelectObject, currentTool
 
   return (
     <div className="viewport-container" ref={containerRef}>
-      <div className="viewport-toolbar">
-        {tools.map(tool => (
-          <button
-            key={tool.id}
-            className={`viewport-tool-btn ${currentTool === tool.id ? 'active' : ''}`}
-            onClick={() => onToolChange(tool.id)}
-            title={msg(tool.labelKey)}
-          >
-            {tool.icon}
-          </button>
-        ))}
-        {currentTool === 'scale' && (
-          <button
-            className={`viewport-tool-btn ${uniformScale ? 'active' : ''}`}
-            onClick={() => setUniformScale(!uniformScale)}
-            title={uniformScale ? msg('tool.uniformScaleOn') : msg('tool.uniformScaleOff')}
-          >
-            <IconUniformScale className="tool-icon" />
-          </button>
-        )}
-      </div>
+      {showToolbar && (
+        <div className="viewport-toolbar">
+          {tools.map(tool => (
+            <button
+              key={tool.id}
+              className={`viewport-tool-btn ${currentTool === tool.id ? 'active' : ''}`}
+              onClick={() => onToolChange(tool.id)}
+              title={msg(tool.labelKey)}
+            >
+              {tool.icon}
+            </button>
+          ))}
+          {currentTool === 'scale' && (
+            <button
+              className={`viewport-tool-btn ${uniformScale ? 'active' : ''}`}
+              onClick={() => setUniformScale(!uniformScale)}
+              title={uniformScale ? msg('tool.uniformScaleOn') : msg('tool.uniformScaleOff')}
+            >
+              <IconUniformScale className="tool-icon" />
+            </button>
+          )}
+        </div>
+      )}
       <div className="viewport-overlay">
         <span className="viewport-label">
-          {cameraType === 'perspective' ? msg('viewport.perspective') : msg('viewport.orthographic')}
+          {viewLabel || (cameraType === 'perspective' ? msg('viewport.perspective') : msg('viewport.orthographic'))}
         </span>
       </div>
-      <div className="view-cube" ref={viewCubeRef} />
-      <div className="viewport-dock">
-        <div className="viewport-dock-item">
-          <span className="viewport-dock-label">{msg('viewport.cameraMode')}:</span>
-          <DropdownMenu
-            label={cameraType === 'perspective' ? msg('viewport.perspective') : msg('viewport.orthographic')}
-            items={cameraModeItems}
-            roundedCorners="all"
-            className="camera-mode-dropdown"
-            position="top"
-          />
+      <div className={`view-cube ${showViewCube ? '' : 'hidden'}`} ref={viewCubeRef} />
+      {showDock && (
+        <div className="viewport-dock">
+          <div className="viewport-dock-item">
+            <span className="viewport-dock-label">{msg('viewport.cameraMode')}:</span>
+            <DropdownMenu
+              label={cameraType === 'perspective' ? msg('viewport.perspective') : msg('viewport.orthographic')}
+              items={cameraModeItems}
+              roundedCorners="all"
+              className="camera-mode-dropdown"
+              position="top"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

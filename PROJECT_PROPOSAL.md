@@ -110,6 +110,8 @@ interface Scene {
 - [ ] 多选、复制粘贴
 - [ ] 搜索过滤
 - [x] 右键上下文菜单
+- [x] 添加对象下拉菜单
+- [x] 紧凑的标题栏设计
 
 ### 2. 属性检查器 (Inspector Panel)
 
@@ -128,7 +130,7 @@ interface Scene {
 - [x] 变换工具（Gizmos）：移动、旋转、缩放
 - [x] 网格/轴心显示
 - [x] 场景拾取（Raycasting）
-- [ ] 多视角布局（4视图）
+- [x] 多视角布局（4视图）
 - [x] 定向球（26面体截角截棱立方体）
 - [x] 定向球点击跳转视角
 - [x] 定向球面高亮显示
@@ -146,13 +148,17 @@ interface Scene {
 - [x] 语言子菜单展开功能
 - [x] 预制件列表滚动条显示
 - [x] 层级列表项样式优化
-- [x] 面板标题容器紧凑设计
+- [x] 面板标题容器紧凑设计（24px高度）
+- [x] 下拉菜单组件（添加对象）
 
 ### 5. 资源管理器
 
 - [x] 导入模型（GLTF/GLB优先，OBJ支持）
-- [ ] 纹理管理（支持预览）
-- [ ] 预制件（Prefab）系统
+- [x] 纹理管理（支持预览）
+- [x] 预制件（Prefab）系统
+- [x] 资源删除和重命名
+- [x] 右键菜单（重命名、删除）
+- [x] 紧凑的标题栏设计
 - [ ] 场景文件序列化（JSON格式）
 - [ ] 资源压缩和优化
 
@@ -177,6 +183,7 @@ interface Scene {
 - [ ] 压缩优化（Terser、Draco）
 - [ ] 单文件/多文件输出
 - [ ] 加载画面定制
+- [ ] 打包为桌面软件（Electron/Tauri）
 
 ---
 
@@ -217,9 +224,9 @@ interface Scene {
 ### Phase 2: 编辑器完善
 
 - [x] Inspector面板（组件编辑）
-- [ ] 资源管理器
+- [x] 资源管理器
 - [ ] 场景保存/加载
-- [ ] 预制件系统
+- [x] 预制件系统
 - [x] Undo/Redo
 - [x] 快捷键支持
 - [x] 多语言支持（中、英、日、俄、拉丁语）
@@ -227,6 +234,8 @@ interface Scene {
 - [x] 设置持久化（LocalStorage）
 - [x] 可折叠面板组件
 - [x] SVG图标系统
+- [x] Toast 弹窗系统
+- [x] 自定义 Dialog 系统（替换浏览器原生弹窗）
 
 **项目格式设计**（详见 [PROJECT_FORMAT_DESIGN.md](./PROJECT_FORMAT_DESIGN.md)）：
 - [ ] 项目文件夹结构实现
@@ -266,6 +275,7 @@ interface Scene {
 
 - [ ] 构建优化
 - [ ] Web平台发布
+- [ ] 桌面应用打包（Electron/Tauri）
 - [ ] 插件系统
 - [ ] 社区资源市场
 - [ ] 文档完善
@@ -315,6 +325,18 @@ interface Scene {
 3. **[file-saver](https://github.com/eligrey/FileSaver.js/)**
    - 客户端文件保存库
    - 用于导出项目文件
+
+### 桌面打包相关
+
+1. **[Electron](https://www.electronjs.org/)**
+   - 跨平台桌面应用框架
+   - 使用 Web 技术构建桌面应用
+   - 生态成熟，文档完善
+
+2. **[Tauri](https://tauri.app/)**
+   - 轻量级桌面应用框架
+   - 使用系统 WebView，体积更小
+   - Rust 后端，性能优异
 
 ## 许可证
 

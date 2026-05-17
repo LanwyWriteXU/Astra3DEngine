@@ -13,6 +13,10 @@ import IconLanguage from '../icons/language.svg?react';
 import IconSettings from '../icons/settings.svg?react';
 import IconPlay from '../icons/play.svg?react';
 import IconStop from '../icons/stop.svg?react';
+import IconImport from '../icons/import.svg?react';
+import IconExport from '../icons/export.svg?react';
+import IconSnapshot from '../icons/snapshot.svg?react';
+import IconRecent from '../icons/recent.svg?react';
 
 function Toolbar({ 
   isPlaying, 
@@ -30,7 +34,12 @@ function Toolbar({
   canRedo,
   onUndo,
   onRedo,
-  onOpenPreferences
+  onOpenPreferences,
+  recentProjects = [],
+  onOpenRecentProject,
+  onExportAsAstra,
+  onImportAstra,
+  onOpenSnapshots
 }) {
   const fileMenuRef = useRef(null);
   const editMenuRef = useRef(null);
@@ -74,6 +83,11 @@ function Toolbar({
       shortcut: 'Ctrl+O',
       onClick: onLoadProject
     },
+    {
+      label: msg('menu.importAstra'),
+      icon: <IconImport className="menu-icon" />,
+      onClick: onImportAstra
+    },
     { divider: true },
     {
       label: msg('menu.saveProject'),
@@ -86,7 +100,30 @@ function Toolbar({
       icon: <IconSaveAs className="menu-icon" />,
       shortcut: 'Ctrl+Shift+S',
       onClick: onSaveAsProject
-    }
+    },
+    {
+      label: msg('menu.exportAstra'),
+      icon: <IconExport className="menu-icon" />,
+      onClick: onExportAsAstra
+    },
+    { divider: true },
+    {
+      label: msg('menu.snapshots'),
+      icon: <IconSnapshot className="menu-icon" />,
+      onClick: onOpenSnapshots
+    },
+    ...(recentProjects.length > 0 ? [
+      { divider: true },
+      {
+        label: msg('menu.recentProjects'),
+        icon: <IconRecent className="menu-icon" />,
+        submenu: recentProjects.slice(0, 5).map(project => ({
+          label: project.name,
+          hint: new Date(project.lastOpened).toLocaleDateString(),
+          onClick: () => onOpenRecentProject && onOpenRecentProject(project)
+        }))
+      }
+    ] : [])
   ];
 
   const editMenuItems = [

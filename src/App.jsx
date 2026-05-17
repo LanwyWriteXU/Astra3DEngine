@@ -1,18 +1,27 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import Viewport from './components/Viewport.jsx';
+import MultiViewport from './components/MultiViewport.jsx';
 import HierarchyPanel from './components/HierarchyPanel.jsx';
 import InspectorPanel from './components/InspectorPanel.jsx';
 import AssetsPanel from './components/AssetsPanel.jsx';
 import PrefabsPanel from './components/PrefabsPanel.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import PreferencesModal from './components/PreferencesModal.jsx';
+import SnapshotsModal from './components/SnapshotsModal.jsx';
 import { msg, toggleLocale, getLocale, setLocale } from './i18n/index.js';
 import { useHistory } from './hooks/useHistory.js';
+import { useAutoSave } from './hooks/useAutoSave.js';
+import { useRecentProjects } from './hooks/useRecentProjects.js';
+import { useDialog, DialogProvider } from './hooks/useDialog.jsx';
+import { useToast, ToastProvider } from './hooks/useToast.jsx';
+import { exportProjectAsAstra, importProjectFromAstra } from './utils/projectExporter.js';
 
-function App() {
+function AppContent() {
+  const dialog = useDialog();
+  const toast = useToast();
   const [selectedObject, setSelectedObject] = useState(null);
+  const [selectedObjects, setSelectedObjects] = useState([]);
   const {
     state: sceneObjects,
     setState: setSceneObjectsWithHistory,
@@ -39,6 +48,17 @@ function App() {
     return saved || 'dark';
   });
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
+  const [isSnapshotsOpen, setIsSnapshotsOpen] = useState(false);
+  
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
+    const saved = localStorage.getItem('astra-autosave-enabled');
+    return saved !== 'false';
+  });
+  
+  const [maxSnapshots, setMaxSnapshots] = useState(() => {
+    const saved = localStorage.getItem('astra-max-snapshots');
+    return saved ? parseInt(saved, 10) : 10;
+  });
   
   const [hierarchyCollapsed, setHierarchyCollapsed] = useState(() => {
     const saved = localStorage.getItem('astra-panel-hierarchy-collapsed');
@@ -102,12 +122,43 @@ function App() {
     });
   }, []);
 
+  const handleToggleAutoSave = useCallback(() => {
+    setAutoSaveEnabled(prev => {
+      const newValue = !prev;
+      localStorage.setItem('astra-autosave-enabled', String(newValue));
+      return newValue;
+    });
+  }, []);
+
+  const handleSetMaxSnapshots = useCallback((value) => {
+    const clampedValue = Math.max(1, Math.min(50, value));
+    setMaxSnapshots(clampedValue);
+    localStorage.setItem('astra-max-snapshots', String(clampedValue));
+  }, []);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const handleObjectSelect = useCallback((object) => {
-    setSelectedObject(object);
+  const handleObjectSelect = useCallback((object, isMultiSelect = false) => {
+    if (!object) return;
+    if (isMultiSelect) {
+      setSelectedObjects(prev => {
+        const isSelected = prev.some(o => o && o.id === object.id);
+        if (isSelected) {
+          const newSelection = prev.filter(o => o && o.id !== object.id);
+          setSelectedObject(newSelection.length === 1 ? newSelection[0] : null);
+          return newSelection;
+        } else {
+          const newSelection = [...prev, object];
+          setSelectedObject(object);
+          return newSelection;
+        }
+      });
+    } else {
+      setSelectedObject(object);
+      setSelectedObjects([object]);
+    }
   }, []);
 
   const handleAddObject = useCallback((type, asset = null) => {
@@ -132,7 +183,7 @@ function App() {
         position: [0, 0, 0],
         rotation: [0, 0, 0],
         scale: [1, 1, 1],
-        color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
+        color: '#66ccff'
       };
       setSceneObjectsWithHistory(prev => [...prev, newObject]);
     }
@@ -188,10 +239,36 @@ function App() {
     }
   }, [handleAddObject]);
 
+  const handleDeleteAsset = useCallback((asset) => {
+    if (asset.url) {
+      URL.revokeObjectURL(asset.url);
+    }
+    setAssets(prev => prev.filter(a => a.id !== asset.id));
+    if (selectedAsset?.id === asset.id) {
+      setSelectedAsset(null);
+    }
+  }, [selectedAsset]);
+
+  const handleRenameAsset = useCallback((asset, newName) => {
+    setAssets(prev => prev.map(a => 
+      a.id === asset.id ? { ...a, name: newName } : a
+    ));
+  }, []);
+
   const handleDeleteObject = useCallback((id) => {
     setSceneObjectsWithHistory(prev => prev.filter(obj => obj.id !== id));
     setSelectedObject(prev => prev && prev.id === id ? null : prev);
+    setSelectedObjects(prev => prev.filter(o => o.id !== id));
   }, [setSceneObjectsWithHistory]);
+
+  const handleDeleteSelectedObjects = useCallback(() => {
+    if (selectedObjects.length === 0) return;
+    
+    const idsToDelete = selectedObjects.filter(o => o).map(o => o.id);
+    setSceneObjectsWithHistory(prev => prev.filter(obj => !idsToDelete.includes(obj.id)));
+    setSelectedObject(null);
+    setSelectedObjects([]);
+  }, [selectedObjects, setSceneObjectsWithHistory]);
 
   const handleUpdateObject = useCallback((id, updates, recordHistory = true) => {
     setSceneObjectsWithHistory(prev => prev.map(obj =>
@@ -252,6 +329,45 @@ function App() {
     handleUpdateObject(id, { name: newName });
   }, [handleUpdateObject]);
 
+  const handleReorderObjects = useCallback((draggedId, targetId, position) => {
+    setSceneObjectsWithHistory(prev => {
+      const objects = [...prev];
+      const draggedIndex = objects.findIndex(o => o.id === draggedId);
+      if (draggedIndex === -1) return prev;
+      
+      const draggedObj = { ...objects[draggedIndex] };
+      
+      if (targetId === null) {
+        draggedObj.parentId = null;
+        objects.splice(draggedIndex, 1);
+        objects.push(draggedObj);
+        return objects;
+      }
+      
+      const targetIndex = objects.findIndex(o => o.id === targetId);
+      if (targetIndex === -1) return prev;
+      
+      const targetObj = objects[targetIndex];
+      
+      objects.splice(draggedIndex, 1);
+      
+      if (position === 'inside') {
+        draggedObj.parentId = targetId;
+        const newTargetIndex = objects.findIndex(o => o.id === targetId);
+        const childrenOfTarget = objects.filter(o => o.parentId === targetId);
+        const insertIndex = newTargetIndex + 1 + childrenOfTarget.length;
+        objects.splice(insertIndex, 0, draggedObj);
+      } else {
+        draggedObj.parentId = targetObj.parentId || null;
+        const newTargetIndex = objects.findIndex(o => o.id === targetId);
+        const insertIndex = position === 'before' ? newTargetIndex : newTargetIndex + 1;
+        objects.splice(insertIndex, 0, draggedObj);
+      }
+      
+      return objects;
+    });
+  }, [setSceneObjectsWithHistory]);
+
   const handleCreatePrefab = useCallback((objectId) => {
     const obj = sceneObjects.find(o => o.id === objectId);
     if (!obj) return null;
@@ -292,10 +408,13 @@ function App() {
       id: Date.now(),
       name: `${prefab.name}_Instance`,
       prefabId: prefab.id,
+      type: prefab.template.type,
       position: instancePosition,
       rotation: [...prefab.template.defaultRotation],
       scale: [...prefab.template.scale],
       color: prefab.template.color,
+      assetId: prefab.template.assetId,
+      isModel: prefab.template.isModel,
       overrides: { scale: false, color: false }
     };
 
@@ -398,6 +517,7 @@ function App() {
           assetId: obj.assetId,
           isModel: obj.isModel,
           prefabId: obj.prefabId,
+          parentId: obj.parentId || null,
           overrides: obj.overrides
         }))
       },
@@ -415,28 +535,59 @@ function App() {
     };
   }, [sceneObjects, prefabs, assets, projectFileName]);
 
-  const writeToFile = async (handle, data) => {
-    const writable = await handle.createWritable();
-    await writable.write(JSON.stringify(data, null, 2));
-    await writable.close();
-  };
+  const { save: autoSave, scheduleSave, loadSnapshots, loadSnapshot, deleteSnapshot, clearAll: clearAutoSave } = useAutoSave(getProjectData, 60000, maxSnapshots);
+  
+  const { recentProjects, addRecentProject, openRecentProject, removeRecentProject } = useRecentProjects();
 
-  const handleSaveProject = useCallback(async () => {
-    const projectData = getProjectData();
-
-    if (hasFileSystemAccess && fileHandleRef.current) {
-      try {
-        await writeToFile(fileHandleRef.current, projectData);
-        setHasUnsavedChanges(false);
-        console.log('Project saved:', projectFileName);
-        return;
-      } catch (error) {
-        console.error('Error saving file:', error);
-      }
+  useEffect(() => {
+    if (autoSaveEnabled && sceneObjects.length > 0) {
+      scheduleSave();
     }
+  }, [sceneObjects, prefabs, assets, autoSaveEnabled, scheduleSave]);
 
-    handleSaveAsProject();
-  }, [getProjectData, hasFileSystemAccess, projectFileName]);
+  const snapshotsLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (snapshotsLoadedRef.current) return;
+    snapshotsLoadedRef.current = true;
+
+    const loadSavedSnapshots = async () => {
+      const snapshots = await loadSnapshots();
+      if (snapshots.length > 0) {
+        const latestSnapshot = snapshots[0];
+        const snapshotList = snapshots.slice(0, 5).map((snap, i) => 
+          `${snap.name} (${new Date(snap.savedAt).toLocaleString()})`
+        ).join('\n');
+        
+        const shouldRestore = await dialog.confirm(
+          snapshotList,
+          `发现 ${snapshots.length} 个快照，是否恢复？`,
+          { confirmText: msg('snapshots.restore'), cancelText: msg('dialog.cancel') }
+        );
+        if (shouldRestore) {
+          const snapshotData = latestSnapshot.data;
+          resetHistory(snapshotData.scene?.objects || []);
+          setPrefabs(snapshotData.prefabs || []);
+          setProjectFileName(snapshotData.name || null);
+          console.log('Restored snapshot:', latestSnapshot.name);
+        }
+      }
+    };
+    loadSavedSnapshots();
+  }, [loadSnapshots, resetHistory, dialog]);
+
+  const writeToFile = async (handle, data) => {
+    try {
+      const writable = await handle.createWritable();
+      await writable.write(JSON.stringify(data, null, 2));
+      await writable.close();
+    } catch (error) {
+      if (error.name === 'InvalidStateError') {
+        throw new Error('FILE_HANDLE_INVALID');
+      }
+      throw error;
+    }
+  };
 
   const handleSaveAsProject = useCallback(async () => {
     const projectData = getProjectData();
@@ -455,6 +606,7 @@ function App() {
         setProjectFileName(handle.name);
         await writeToFile(handle, projectData);
         setHasUnsavedChanges(false);
+        toast.success(`已保存: ${handle.name}`);
         console.log('Project saved as:', handle.name);
       } catch (error) {
         if (error.name !== 'AbortError') {
@@ -474,8 +626,67 @@ function App() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       setHasUnsavedChanges(false);
+      toast.success(`已保存: ${projectFileName || 'astra_project.json'}`);
     }
-  }, [getProjectData, hasFileSystemAccess, projectFileName]);
+  }, [getProjectData, hasFileSystemAccess, projectFileName, toast]);
+
+  const verifyFileHandle = async (handle) => {
+    try {
+      const permission = await handle.queryPermission({ mode: 'readwrite' });
+      if (permission === 'granted') {
+        return true;
+      }
+      const requestPermission = await handle.requestPermission({ mode: 'readwrite' });
+      return requestPermission === 'granted';
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const handleSaveProject = useCallback(async () => {
+    const projectData = getProjectData();
+
+    if (hasFileSystemAccess && fileHandleRef.current) {
+      const hasPermission = await verifyFileHandle(fileHandleRef.current);
+      
+      if (!hasPermission) {
+        const shouldReselect = await dialog.confirm(
+          '文件访问权限已失效。是否选择新的保存位置？',
+          '保存失败'
+        );
+        if (shouldReselect) {
+          fileHandleRef.current = null;
+          await handleSaveAsProject();
+        }
+        return;
+      }
+
+      try {
+        await writeToFile(fileHandleRef.current, projectData);
+        setHasUnsavedChanges(false);
+        toast.success(`已保存: ${projectFileName}`);
+        console.log('Project saved:', projectFileName);
+        return;
+      } catch (error) {
+        if (error.message === 'FILE_HANDLE_INVALID') {
+          const shouldReselect = await dialog.confirm(
+            '文件可能已被外部修改或移动。是否选择新的保存位置？',
+            '保存失败'
+          );
+          if (shouldReselect) {
+            fileHandleRef.current = null;
+            await handleSaveAsProject();
+          }
+          return;
+        }
+        console.error('Error saving file:', error);
+        toast.error('保存失败: ' + error.message);
+        return;
+      }
+    }
+
+    handleSaveAsProject();
+  }, [getProjectData, hasFileSystemAccess, projectFileName, dialog, handleSaveAsProject, toast]);
 
   const handleLoadProject = useCallback(async () => {
     if (hasFileSystemAccess) {
@@ -493,13 +704,17 @@ function App() {
         
         if (projectData.version && projectData.scene) {
           fileHandleRef.current = handle;
-          setProjectFileName(handle.name);
+          const projectName = projectData.name || handle.name.replace('.json', '');
+          setProjectFileName(projectName);
           resetHistory(projectData.scene.objects || []);
           setPrefabs(projectData.prefabs || []);
           setSelectedObject(null);
+          setSelectedObjects([]);
           setSelectedPrefab(null);
           setHasUnsavedChanges(false);
-          console.log('Project loaded:', handle.name);
+          clearAutoSave();
+          addRecentProject(projectName, handle);
+          console.log('Project loaded:', projectName);
         } else {
           console.error('Invalid project file format');
         }
@@ -522,13 +737,16 @@ function App() {
           const projectData = JSON.parse(text);
           
           if (projectData.version && projectData.scene) {
-            setProjectFileName(file.name);
+            const projectName = projectData.name || file.name.replace('.json', '');
+            setProjectFileName(projectName);
             resetHistory(projectData.scene.objects || []);
             setPrefabs(projectData.prefabs || []);
             setSelectedObject(null);
+            setSelectedObjects([]);
             setSelectedPrefab(null);
             setHasUnsavedChanges(false);
-            console.log('Project loaded:', file.name);
+            clearAutoSave();
+            console.log('Project loaded:', projectName);
           } else {
             console.error('Invalid project file format');
           }
@@ -539,11 +757,11 @@ function App() {
       
       input.click();
     }
-  }, [hasFileSystemAccess, resetHistory]);
+  }, [hasFileSystemAccess, resetHistory, clearAutoSave, addRecentProject]);
 
   const handleNewProject = useCallback(async () => {
     if (hasUnsavedChanges || sceneObjects.length > 0) {
-      const confirmNew = window.confirm(msg('menu.confirmNew'));
+      const confirmNew = await dialog.confirm(msg('menu.confirmNew'), msg('menu.newProject'));
       if (!confirmNew) return;
     }
     
@@ -552,11 +770,109 @@ function App() {
     resetHistory([]);
     setPrefabs([]);
     setSelectedObject(null);
+    setSelectedObjects([]);
     setSelectedPrefab(null);
     setAssets([]);
     setSelectedAsset(null);
     setHasUnsavedChanges(false);
-  }, [sceneObjects.length, hasUnsavedChanges, resetHistory]);
+    clearAutoSave();
+  }, [sceneObjects.length, hasUnsavedChanges, resetHistory, clearAutoSave, dialog]);
+
+  const handleOpenRecentProject = useCallback(async (project) => {
+    if (!hasFileSystemAccess) {
+      await dialog.alert('File System Access API not supported', 'Error');
+      return;
+    }
+
+    const handle = await openRecentProject(project.id);
+    
+    if (!handle) {
+      const shouldRemove = await dialog.confirm(
+        `文件可能已被移动或删除。是否从最近项目列表中移除？`,
+        `无法访问 "${project.name}"`
+      );
+      if (shouldRemove) {
+        await removeRecentProject(project.id);
+      }
+      return;
+    }
+
+    try {
+      const file = await handle.getFile();
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      fileHandleRef.current = handle;
+      resetHistory(data.scene?.objects || []);
+      setPrefabs(data.prefabs || []);
+      setProjectFileName(project.name);
+      setSelectedObject(null);
+      setSelectedObjects([]);
+      setSelectedPrefab(null);
+      setAssets(data.assets || []);
+      setHasUnsavedChanges(false);
+      
+      addRecentProject(project.name, handle);
+    } catch (error) {
+      console.error('Failed to open recent project:', error);
+    }
+  }, [hasFileSystemAccess, openRecentProject, removeRecentProject, resetHistory, addRecentProject, dialog]);
+
+  const handleExportAsAstra = useCallback(async () => {
+    try {
+      const projectData = getProjectData();
+      const filename = await exportProjectAsAstra(projectData, projectData.name + '.astra');
+      console.log('Project exported as:', filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      await dialog.alert(msg('menu.exportFailed') + ': ' + error.message, 'Error');
+    }
+  }, [getProjectData, dialog]);
+
+  const handleImportAstra = useCallback(async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.astra';
+    
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const projectData = await importProjectFromAstra(file);
+        
+        setProjectFileName(projectData.name + '.astra');
+        resetHistory(projectData.scene.objects || []);
+        setPrefabs(projectData.prefabs || []);
+        setSelectedObject(null);
+        setSelectedObjects([]);
+        setSelectedPrefab(null);
+        setHasUnsavedChanges(false);
+        clearAutoSave();
+        addRecentProject({
+          name: projectData.name,
+          path: file.name
+        });
+        console.log('Project imported from .astra:', file.name);
+      } catch (error) {
+        console.error('Import failed:', error);
+        await dialog.alert(msg('menu.importFailed') + ': ' + error.message, 'Error');
+      }
+    };
+    
+    input.click();
+  }, [resetHistory, clearAutoSave, addRecentProject, dialog]);
+
+  const handleRestoreSnapshot = useCallback((snapshotData) => {
+    if (snapshotData && snapshotData.scene) {
+      resetHistory(snapshotData.scene.objects || []);
+      setPrefabs(snapshotData.prefabs || []);
+      setProjectFileName(snapshotData.name || null);
+      setSelectedObject(null);
+      setSelectedObjects([]);
+      console.log('Restored snapshot:', snapshotData.name);
+    }
+  }, [resetHistory]);
 
   useEffect(() => {
     const handleFileShortcuts = (e) => {
@@ -624,6 +940,11 @@ function App() {
         onUndo={undo}
         onRedo={redo}
         onOpenPreferences={() => setIsPreferencesOpen(true)}
+        recentProjects={recentProjects}
+        onOpenRecentProject={handleOpenRecentProject}
+        onExportAsAstra={handleExportAsAstra}
+        onImportAstra={handleImportAstra}
+        onOpenSnapshots={() => setIsSnapshotsOpen(true)}
       />
 
       <PreferencesModal
@@ -633,6 +954,20 @@ function App() {
         onToggleTheme={handleToggleTheme}
         onToggleLocale={handleToggleLocale}
         onSetLocale={handleSetLocale}
+        autoSaveEnabled={autoSaveEnabled}
+        onToggleAutoSave={handleToggleAutoSave}
+        maxSnapshots={maxSnapshots}
+        onSetMaxSnapshots={handleSetMaxSnapshots}
+      />
+
+      <SnapshotsModal
+        isOpen={isSnapshotsOpen}
+        onClose={() => setIsSnapshotsOpen(false)}
+        onLoadSnapshots={loadSnapshots}
+        onLoadSnapshot={loadSnapshot}
+        onDeleteSnapshot={deleteSnapshot}
+        onClearAll={clearAutoSave}
+        onRestoreSnapshot={handleRestoreSnapshot}
       />
 
       <div className="main-content-wrapper">
@@ -641,9 +976,11 @@ function App() {
             <HierarchyPanel
               objects={sceneObjects}
               selectedObject={selectedObject}
+              selectedObjects={selectedObjects}
               onSelectObject={handleObjectSelect}
               onAddObject={handleAddObject}
               onDeleteObject={handleDeleteObject}
+              onDeleteSelectedObjects={handleDeleteSelectedObjects}
               onCreatePrefab={handleCreatePrefab}
               prefabs={prefabs}
               onCopyObject={handleCopyObject}
@@ -653,6 +990,7 @@ function App() {
               clipboard={clipboard}
               vertical={leftSidebarAllCollapsed}
               onCollapseChange={setHierarchyCollapsed}
+              onReorderObjects={handleReorderObjects}
             />
             <PrefabsPanel
               prefabs={prefabs}
@@ -667,7 +1005,7 @@ function App() {
           </div>
 
           <div className="center-area">
-            <Viewport
+            <MultiViewport
               objects={sceneObjects}
               assets={assets}
               selectedObject={selectedObject}
@@ -701,6 +1039,8 @@ function App() {
             onImport={handleImportAsset}
             onSelectAsset={handleSelectAsset}
             selectedAsset={selectedAsset}
+            onDeleteAsset={handleDeleteAsset}
+            onRenameAsset={handleRenameAsset}
           />
         </div>
       </div>
@@ -715,6 +1055,16 @@ function App() {
         </span>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <DialogProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
+    </DialogProvider>
   );
 }
 

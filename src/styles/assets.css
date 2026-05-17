@@ -58,6 +58,7 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
+  padding: 4px;
 }
 
 .asset-item:hover {
@@ -70,9 +71,35 @@
   background-color: rgba(64, 120, 192, 0.2);
 }
 
-.asset-icon {
-  font-size: 28px;
-  margin-bottom: 4px;
+.asset-preview {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 2px;
+  background-color: var(--bg-dark);
+}
+
+.asset-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.asset-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.asset-type-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--text-secondary);
 }
 
 .asset-name {
@@ -83,4 +110,76 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-top: 4px;
+}
+
+.asset-name-input {
+  width: 100%;
+  font-size: 10px;
+  background-color: var(--bg-dark);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  color: var(--text-primary);
+  padding: 2px 4px;
+  margin-top: 4px;
+  outline: none;
+}
+
+.assets-filter {
+  display: flex;
+  gap: 2px;
+  margin-right: 4px;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 4px;
+  background-color: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.filter-btn:hover {
+  border-color: var(--accent);
+}
+
+.filter-btn.active {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.filter-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.import-btn {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.import-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.import-btn-icon {
+  width: 12px;
+  height: 12px;
 }

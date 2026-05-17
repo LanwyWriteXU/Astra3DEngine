@@ -1,5 +1,58 @@
 # 更新日志
 
+## 2026-05-17 多视角布局与资源管理器完善
+
+### 新增功能
+- **多视角布局系统**：
+  - 创建 `MultiViewport.jsx` 组件
+  - 支持单视图和四视图模式切换（右上角按钮）
+  - 四视图布局：顶视图、前视图、侧视图、透视视图
+  - 点击小视图切换为活动视图（蓝色边框高亮）
+  - 活动视图显示工具栏、定向球、底部栏
+- **Toast 底部弹窗系统**：
+  - 创建 `Toast.jsx` 组件和 `useToast.jsx` Hook
+  - 支持 success/error/warning/info 四种类型
+  - 自动消失（默认3秒）+ 进度条显示剩余时间
+  - 弹出/收回动画效果
+- **文件保存错误处理改进**：
+  - 添加 `verifyFileHandle` 函数验证文件句柄权限
+  - 处理 `InvalidStateError` 错误（文件被外部修改/移动）
+  - 保存前检查权限，失效时提示用户选择新位置
+- **资源管理器完善**：
+  - 纹理预览：导入的图片资源显示缩略图
+  - 分类过滤：顶部过滤器支持 全部/模型/纹理 分类
+  - 右键菜单：支持重命名和删除资源
+- **Viewport 组件增强**：
+  - 新增 `initialCameraType`、`initialCameraPosition`、`initialCameraLookAt` props
+  - 新增 `showToolbar`、`showDock`、`showViewCube`、`viewLabel` props
+- **新增 SVG 图标**：image、file、folder、edit、trash、layout-single、layout-quad
+
+### 新增文件
+- `src/components/Toast.jsx` - Toast 弹窗组件
+- `src/hooks/useToast.jsx` - ToastProvider 和 useToast Hook
+- `src/components/MultiViewport.jsx` - 多视角布局组件
+
+### BUG修复
+- **快照恢复弹窗重复弹出**：使用 `useRef` 确保只执行一次
+- **文件句柄失效后无限弹窗**：修复权限验证逻辑
+- **视口不渲染内容**：修复单视图模式缺少 style、容器尺寸为 0
+- **布局按钮遮挡 overlay**：将 overlay 移到左上角
+- **四视图定向球消失**：定向球 div 始终存在，用 CSS 控制显示
+- **模型选择框大小不匹配**：修复 outline 继承 scale 导致双重缩放
+- **模型延迟加载不显示**：添加 assets 依赖，确保模型加载后正确渲染
+- **导入模型预制件无法实例化**：实例化时添加 type、assetId、isModel 属性
+- **素材面板右键菜单样式错误**：使用与层级面板一致的 context-menu 样式
+- **右键菜单图标不一致**：统一使用 IconRename 和 IconDelete
+
+### UI改进
+- **层级面板添加按钮重构**：底部三个按钮改为标题栏右侧"+"下拉菜单
+- **素材面板导入按钮改进**：文字按钮改为透明底"+"图标按钮
+- **面板标题栏紧凑化**：减小 padding、font-size、按钮和图标尺寸
+
+### 国际化
+- 新增多视图翻译：俄语、拉丁语、日语
+- 新增添加对象相关翻译：hierarchy.addObject、hierarchy.cube/sphere/plane
+
 ## 2026-05-16 预制件系统与右键菜单
 
 ### 新增功能

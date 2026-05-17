@@ -97,7 +97,13 @@ const DropdownMenu = forwardRef(function DropdownMenu({ label, items, className 
                         <button
                           key={subIndex}
                           className={`dropdown-item ${subItem.disabled ? 'disabled' : ''} ${subItem.active ? 'active' : ''}`}
-                          onClick={() => !subItem.disabled && subItem.onClick && subItem.onClick()}
+                          onClick={() => {
+                            if (!subItem.disabled && subItem.onClick) {
+                              subItem.onClick();
+                              setIsOpen(false);
+                              setActiveSubmenu(null);
+                            }
+                          }}
                           disabled={subItem.disabled}
                         >
                           {subItem.icon && <span className="dropdown-icon">{subItem.icon}</span>}

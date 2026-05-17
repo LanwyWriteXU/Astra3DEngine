@@ -12,13 +12,16 @@ import IconCopy from '../icons/copy.svg?react';
 import IconPaste from '../icons/paste.svg?react';
 import IconDuplicate from '../icons/duplicate.svg?react';
 import IconRename from '../icons/rename.svg?react';
+import IconPlus from '../icons/plus.svg?react';
 
 function HierarchyPanel({ 
   objects, 
   selectedObject, 
+  selectedObjects = [],
   onSelectObject, 
   onAddObject, 
   onDeleteObject,
+  onDeleteSelectedObjects,
   onCreatePrefab,
   prefabs,
   onCopyObject,
@@ -27,11 +30,17 @@ function HierarchyPanel({
   onRenameObject,
   clipboard,
   vertical,
-  onCollapseChange
+  onCollapseChange,
+  onReorderObjects
 }) {
   const [contextMenu, setContextMenu] = useState(null);
   const [isRenaming, setIsRenaming] = useState(null);
   const [renameValue, setRenameValue] = useState('');
+  const [draggedId, setDraggedId] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [dropPosition, setDropPosition] = useState(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef(null);
   const contextMenuRef = useRef(null);
   const renameInputRef = useRef(null);
 
@@ -39,6 +48,9 @@ function HierarchyPanel({
     const handleClickOutside = (e) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
         setContextMenu(null);
+      }
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target)) {
+        setAddMenuOpen(false);
       }
     };
     
@@ -77,7 +89,11 @@ function HierarchyPanel({
 
   const handleDelete = () => {
     if (contextMenu?.object) {
-      onDeleteObject(contextMenu.object.id);
+      if (selectedObjects.length > 1 && selectedObjects.some(o => o && o.id === contextMenu.object.id)) {
+        onDeleteSelectedObjects();
+      } else {
+        onDeleteObject(contextMenu.object.id);
+      }
     }
     setContextMenu(null);
   };
@@ -140,6 +156,205 @@ function HierarchyPanel({
     return <IconCube className="hierarchy-icon" />;
   };
 
+  const getAllDescendantIds = (objId) => {
+    const descendants = new Set();
+    const findDescendants = (id) => {
+      objects.forEach(obj => {
+        if (obj.parentId === id) {
+          descendants.add(obj.id);
+          findDescendants(obj.id);
+        }
+      });
+    };
+    findDescendants(objId);
+    return descendants;
+  };
+
+  const handleDragStart = (e, obj) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', obj.id.toString());
+    setDraggedId(obj.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDropTarget(null);
+    setDropPosition(null);
+  };
+
+  const handleDragOver = (e, obj) => {
+    e.preventDefault();
+    if (draggedId === obj.id) return;
+    
+    const descendantIds = getAllDescendantIds(draggedId);
+    if (descendantIds.has(obj.id)) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const height = rect.height;
+    
+    if (y < height * 0.25) {
+      setDropPosition('before');
+    } else if (y > height * 0.75) {
+      setDropPosition('after');
+    } else {
+      setDropPosition('inside');
+    }
+    
+    setDropTarget(obj.id);
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeave = () => {
+    setDropTarget(null);
+    setDropPosition(null);
+  };
+
+  const handleDrop = (e, targetObj) => {
+    e.preventDefault();
+    
+    if (!draggedId || draggedId === targetObj.id) return;
+    
+    const descendantIds = getAllDescendantIds(draggedId);
+    if (descendantIds.has(targetObj.id)) return;
+
+    if (onReorderObjects) {
+      onReorderObjects(draggedId, targetObj.id, dropPosition);
+    }
+    
+    setDraggedId(null);
+    setDropTarget(null);
+    setDropPosition(null);
+  };
+
+  const handleDropOnEmpty = (e) => {
+    e.preventDefault();
+    
+    if (!draggedId) return;
+    
+    if (onReorderObjects) {
+      onReorderObjects(draggedId, null, 'end');
+    }
+    
+    setDraggedId(null);
+    setDropTarget(null);
+    setDropPosition(null);
+  };
+
+  const renderObject = (obj, depth = 0) => {
+    const isDropTarget = dropTarget === obj.id;
+    const isDragged = draggedId === obj.id;
+    const hasChildren = objects.some(o => o.parentId === obj.id);
+    const isSelected = selectedObjects.some(o => o && o.id === obj.id);
+    
+    return (
+      <React.Fragment key={obj.id}>
+        <div
+          className={`hierarchy-item ${isSelected ? 'selected' : ''} ${obj.prefabId ? 'prefab-instance' : ''} ${isDragged ? 'dragging' : ''} ${isDropTarget && dropPosition === 'before' ? 'drop-before' : ''} ${isDropTarget && dropPosition === 'after' ? 'drop-after' : ''} ${isDropTarget && dropPosition === 'inside' ? 'drop-inside' : ''}`}
+          style={{ paddingLeft: `${6 + depth * 16}px` }}
+          onClick={(e) => {
+            if (isRenaming) return;
+            onSelectObject(obj, e.ctrlKey || e.metaKey);
+          }}
+          onContextMenu={(e) => handleContextMenu(e, obj)}
+          draggable
+          onDragStart={(e) => handleDragStart(e, obj)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(e, obj)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, obj)}
+        >
+          {hasChildren && (
+            <span className="hierarchy-expand-icon">▼</span>
+          )}
+          {!hasChildren && depth > 0 && (
+            <span className="hierarchy-expand-placeholder" />
+          )}
+          <span className="hierarchy-item-icon">
+            {getObjectIcon(obj)}
+          </span>
+          {isRenaming === obj.id ? (
+            <input
+              ref={renameInputRef}
+              type="text"
+              className="hierarchy-rename-input"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onBlur={handleRenameSubmit}
+              onKeyDown={handleRenameKeyDown}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className="hierarchy-item-name">{obj.name}</span>
+          )}
+          {obj.prefabId && (
+            <span className="hierarchy-prefab-badge" title={getPrefabName(obj.prefabId)}>
+              P
+            </span>
+          )}
+          <button
+            className="icon-btn icon-btn-danger"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteObject(obj.id);
+            }}
+            title={msg('hierarchy.delete')}
+          >
+            <IconDelete className="btn-icon" />
+          </button>
+        </div>
+        {objects
+          .filter(o => o.parentId === obj.id)
+          .sort((a, b) => {
+            const indexA = objects.findIndex(item => item.id === a.id);
+            const indexB = objects.findIndex(item => item.id === b.id);
+            return indexA - indexB;
+          })
+          .map(child => renderObject(child, depth + 1))
+        }
+      </React.Fragment>
+    );
+  };
+
+  const rootObjects = objects.filter(obj => !obj.parentId);
+
+  const headerRight = (
+    <div className="add-menu-container" ref={addMenuRef}>
+      <button 
+        className="add-menu-trigger"
+        onClick={() => setAddMenuOpen(!addMenuOpen)}
+        title={msg('hierarchy.addObject')}
+      >
+        <IconPlus className="add-menu-icon" />
+      </button>
+      {addMenuOpen && (
+        <div className="add-menu-dropdown">
+          <div 
+            className="add-menu-item"
+            onClick={() => { onAddObject('cube'); setAddMenuOpen(false); }}
+          >
+            <IconCube className="add-menu-item-icon" />
+            {msg('hierarchy.cube')}
+          </div>
+          <div 
+            className="add-menu-item"
+            onClick={() => { onAddObject('sphere'); setAddMenuOpen(false); }}
+          >
+            <IconSphere className="add-menu-item-icon" />
+            {msg('hierarchy.sphere')}
+          </div>
+          <div 
+            className="add-menu-item"
+            onClick={() => { onAddObject('plane'); setAddMenuOpen(false); }}
+          >
+            <IconPlane className="add-menu-item-icon" />
+            {msg('hierarchy.plane')}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <CollapsiblePanel 
       title={msg('hierarchy.title')} 
@@ -147,8 +362,13 @@ function HierarchyPanel({
       storageKey="astra-panel-hierarchy-collapsed"
       vertical={vertical}
       onCollapseChange={onCollapseChange}
+      headerRight={headerRight}
     >
-      <div className="panel-content">
+      <div 
+        className="panel-content"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleDropOnEmpty}
+      >
         {objects.length === 0 ? (
           <div style={{
             color: 'var(--text-secondary)',
@@ -160,59 +380,8 @@ function HierarchyPanel({
             <span style={{ opacity: 0.7 }}>{msg('hierarchy.emptyHint')}</span>
           </div>
         ) : (
-          objects.map(obj => (
-            <div
-              key={obj.id}
-              className={`hierarchy-item ${selectedObject && selectedObject.id === obj.id ? 'selected' : ''} ${obj.prefabId ? 'prefab-instance' : ''}`}
-              onClick={() => !isRenaming && onSelectObject(obj)}
-              onContextMenu={(e) => handleContextMenu(e, obj)}
-            >
-              <span className="hierarchy-item-icon">
-                {getObjectIcon(obj)}
-              </span>
-              {isRenaming === obj.id ? (
-                <input
-                  ref={renameInputRef}
-                  type="text"
-                  className="hierarchy-rename-input"
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onBlur={handleRenameSubmit}
-                  onKeyDown={handleRenameKeyDown}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <span className="hierarchy-item-name">{obj.name}</span>
-              )}
-              {obj.prefabId && (
-                <span className="hierarchy-prefab-badge" title={getPrefabName(obj.prefabId)}>
-                  P
-                </span>
-              )}
-              <button
-                className="icon-btn icon-btn-danger"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteObject(obj.id);
-                }}
-                title={msg('hierarchy.delete')}
-              >
-                <IconDelete className="btn-icon" />
-              </button>
-            </div>
-          ))
+          rootObjects.map(obj => renderObject(obj))
         )}
-      </div>
-      <div className="hierarchy-actions">
-        <button className="btn btn-small" onClick={() => onAddObject('cube')}>
-          {msg('hierarchy.addCube')}
-        </button>
-        <button className="btn btn-small" onClick={() => onAddObject('sphere')}>
-          {msg('hierarchy.addSphere')}
-        </button>
-        <button className="btn btn-small" onClick={() => onAddObject('plane')}>
-          {msg('hierarchy.addPlane')}
-        </button>
       </div>
 
       {contextMenu && (
@@ -250,7 +419,11 @@ function HierarchyPanel({
           </div>
           <div className="context-menu-divider" />
           <div className="context-menu-item context-menu-danger" onClick={handleDelete}>
-            <IconDelete className="context-menu-icon" /> {msg('hierarchy.delete')}
+            <IconDelete className="context-menu-icon" /> 
+            {selectedObjects.length > 1 && selectedObjects.some(o => o && o.id === contextMenu?.object?.id)
+              ? `${msg('hierarchy.deleteSelected')} (${selectedObjects.length})`
+              : msg('hierarchy.delete')
+            }
           </div>
         </div>
       )}
