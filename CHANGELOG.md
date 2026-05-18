@@ -1,5 +1,46 @@
 # 更新日志
 
+## 2026-05-18 插件系统 l10n 完善
+
+### 问题描述
+- 插件设置界面的多语言没有随编辑器语言切换
+- 插件 manifest 信息（名称、描述）始终显示中文，切换到英文后仍显示中文
+- PluginManager 的 locale 没有被正确初始化和同步
+
+### 解决方案
+
+#### l10n 文件结构重组
+```
+src/i18n/plugin-settings/     # 插件设置界面翻译（新增）
+src/plugins/plugins/*/l10n/   # 插件自己的翻译
+```
+
+#### 翻译来源
+| 内容 | 位置 | 获取方式 |
+|------|------|----------|
+| 插件设置界面 UI | `src/i18n/plugin-settings/` | `msg('pluginSettings.key')` |
+| 插件名称/描述 | `src/plugins/plugins/[id]/l10n/` | `pluginMsg(pluginId, 'name')` |
+| 插件内部文本 | `src/plugins/plugins/[id]/l10n/` | `ctx.msg('key')` |
+
+### 关键修复
+- **App.jsx**：初始化时和切换语言时同步 PluginManager locale
+- **PluginManager.js**：添加 locale 订阅机制，支持组件响应语言变化
+- **PluginSettingsModal.jsx**：订阅 locale 变化重新渲染
+- **i18n/index.js**：合并插件设置界面翻译，添加 locale 订阅
+
+### 新增文件
+- `src/i18n/plugin-settings/en.json` - 插件设置界面英文翻译
+- `src/i18n/plugin-settings/zh.json` - 插件设置界面中文翻译
+- `src/plugins/plugins/*/l10n/en.json` - 各插件英文翻译
+- `src/plugins/plugins/*/l10n/zh.json` - 各插件中文翻译
+
+### 修改文件
+- `src/App.jsx` - 初始化和切换语言时同步 PluginManager locale
+- `src/i18n/index.js` - 合并插件设置界面翻译、添加 locale 订阅
+- `src/plugins/PluginManager.js` - 添加 locale 订阅机制、修复 l10n 加载路径
+- `src/plugins/index.js` - 导出 subscribePluginLocale
+- `src/components/PluginSettingsModal.jsx` - 订阅 locale 变化重新渲染
+
 ## 2026-05-17 多视角布局与资源管理器完善
 
 ### 新增功能

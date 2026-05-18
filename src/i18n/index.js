@@ -4,12 +4,23 @@ import ja from './ja.json';
 import ru from './ru.json';
 import la from './la.json';
 
+import pluginSettingsEn from './plugin-settings/en.json';
+import pluginSettingsZh from './plugin-settings/zh.json';
+
+function mergeMessages(base, pluginSettings) {
+  const merged = { ...base };
+  Object.entries(pluginSettings).forEach(([key, value]) => {
+    merged[`pluginSettings.${key}`] = value;
+  });
+  return merged;
+}
+
 const messages = {
-  en,
-  zh,
-  ja,
-  ru,
-  la
+  en: mergeMessages(en, pluginSettingsEn),
+  zh: mergeMessages(zh, pluginSettingsZh),
+  ja: mergeMessages(ja, pluginSettingsEn),
+  ru: mergeMessages(ru, pluginSettingsEn),
+  la: mergeMessages(la, pluginSettingsEn)
 };
 
 export const languages = [
@@ -36,11 +47,18 @@ function loadLocaleFromStorage() {
 }
 
 let currentLocale = loadLocaleFromStorage();
+const localeListeners = new Set();
+
+export function subscribeLocale(callback) {
+  localeListeners.add(callback);
+  return () => localeListeners.delete(callback);
+}
 
 export function setLocale(locale) {
-  if (messages[locale]) {
+  if (messages[locale] && locale !== currentLocale) {
     currentLocale = locale;
     localStorage.setItem(STORAGE_KEY, locale);
+    localeListeners.forEach(callback => callback(locale));
   }
 }
 
@@ -63,6 +81,8 @@ export function toggleLocale() {
   const langCodes = Object.keys(messages);
   const currentIndex = langCodes.indexOf(currentLocale);
   const nextIndex = (currentIndex + 1) % langCodes.length;
-  currentLocale = langCodes[nextIndex];
-  localStorage.setItem(STORAGE_KEY, currentLocale);
+  const newLocale = langCodes[nextIndex];
+  currentLocale = newLocale;
+  localStorage.setItem(STORAGE_KEY, newLocale);
+  localeListeners.forEach(callback => callback(newLocale));
 }

@@ -9,6 +9,7 @@ import PrefabsPanel from './components/PrefabsPanel.jsx';
 import Toolbar from './components/Toolbar.jsx';
 import PreferencesModal from './components/PreferencesModal.jsx';
 import SnapshotsModal from './components/SnapshotsModal.jsx';
+import PluginSettingsModal from './components/PluginSettingsModal.jsx';
 import { msg, toggleLocale, getLocale, setLocale } from './i18n/index.js';
 import { useHistory } from './hooks/useHistory.js';
 import { useAutoSave } from './hooks/useAutoSave.js';
@@ -16,6 +17,9 @@ import { useRecentProjects } from './hooks/useRecentProjects.js';
 import { useDialog, DialogProvider } from './hooks/useDialog.jsx';
 import { useToast, ToastProvider } from './hooks/useToast.jsx';
 import { exportProjectAsAstra, importProjectFromAstra } from './utils/projectExporter.js';
+import { initPlugins, getPluginManager, setPluginLocale } from './plugins';
+import createPluginApi from './plugins/api.js';
+import { applyTheme } from './utils/themeManager.js';
 
 function AppContent() {
   const dialog = useDialog();
@@ -35,6 +39,10 @@ function AppContent() {
   const [currentTool, setCurrentTool] = useState('select');
   const [isPlaying, setIsPlaying] = useState(false);
   const [locale, setLocaleState] = useState(getLocale());
+  
+  useEffect(() => {
+    setPluginLocale(getLocale());
+  }, []);
   const [assets, setAssets] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [prefabs, setPrefabs] = useState([]);
@@ -49,6 +57,8 @@ function AppContent() {
   });
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [isSnapshotsOpen, setIsSnapshotsOpen] = useState(false);
+  const [isPluginSettingsOpen, setIsPluginSettingsOpen] = useState(false);
+  const pluginManagerRef = useRef(null);
   
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
     const saved = localStorage.getItem('astra-autosave-enabled');
@@ -106,20 +116,30 @@ function AppContent() {
 
   const handleToggleLocale = useCallback(() => {
     toggleLocale();
-    setLocaleState(getLocale());
+    const newLocale = getLocale();
+    setLocaleState(newLocale);
+    setPluginLocale(newLocale);
   }, []);
 
   const handleSetLocale = useCallback((locale) => {
     setLocale(locale);
     setLocaleState(locale);
+    setPluginLocale(locale);
   }, []);
 
   const handleToggleTheme = useCallback(() => {
     setTheme(prev => {
       const newTheme = prev === 'dark' ? 'light' : 'dark';
       localStorage.setItem('astra-theme', newTheme);
+      applyTheme(newTheme);
       return newTheme;
     });
+  }, []);
+
+  const handleSetTheme = useCallback((newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('astra-theme', newTheme);
+    applyTheme(newTheme);
   }, []);
 
   const handleToggleAutoSave = useCallback(() => {
@@ -137,8 +157,45 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    applyTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    const initPluginSystem = async () => {
+      pluginManagerRef.current = await initPlugins();
+      
+      const api = createPluginApi({
+        sceneObjects,
+        setSceneObjects: setSceneObjectsWithHistory,
+        selectedObjectId: selectedObject?.id,
+        setSelectedObjectId: (id) => {
+          const obj = sceneObjects.find(o => o.id === id);
+          setSelectedObject(obj);
+        },
+        assets,
+        setAssets,
+        prefabs,
+        setPrefabs,
+        theme,
+        setTheme,
+        locale,
+        setLocale: handleSetLocale,
+        showNotification: (message, type) => {
+          if (type === 'success') toast.success(message);
+          else if (type === 'error') toast.error(message);
+          else toast.info(message);
+        },
+        viewportRef: null,
+        sceneRef: null,
+        cameraRef: null,
+        rendererRef: null,
+      });
+      
+      pluginManagerRef.current.setApi(api);
+    };
+    
+    initPluginSystem();
+  }, []);
 
   const handleObjectSelect = useCallback((object, isMultiSelect = false) => {
     if (!object) return;
@@ -945,13 +1002,14 @@ function AppContent() {
         onExportAsAstra={handleExportAsAstra}
         onImportAstra={handleImportAstra}
         onOpenSnapshots={() => setIsSnapshotsOpen(true)}
+        onOpenPluginSettings={() => setIsPluginSettingsOpen(true)}
       />
 
       <PreferencesModal
         isOpen={isPreferencesOpen}
         onClose={() => setIsPreferencesOpen(false)}
         theme={theme}
-        onToggleTheme={handleToggleTheme}
+        onSetTheme={handleSetTheme}
         onToggleLocale={handleToggleLocale}
         onSetLocale={handleSetLocale}
         autoSaveEnabled={autoSaveEnabled}
@@ -968,6 +1026,11 @@ function AppContent() {
         onDeleteSnapshot={deleteSnapshot}
         onClearAll={clearAutoSave}
         onRestoreSnapshot={handleRestoreSnapshot}
+      />
+
+      <PluginSettingsModal
+        isOpen={isPluginSettingsOpen}
+        onClose={() => setIsPluginSettingsOpen(false)}
       />
 
       <div className="main-content-wrapper">

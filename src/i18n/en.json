@@ -24,6 +24,7 @@
   "menu.darkMode": "Dark Mode",
   "menu.language": "Language",
   "menu.preferences": "Preferences",
+  "menu.plugins": "Plugin Manager",
   "preferences.close": "Close",
   "preferences.category.appearance": "Appearance",
   "preferences.category.language": "Language",

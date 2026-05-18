@@ -1,0 +1,8 @@
+{
+  "title": "插件管理",
+  "searchPlaceholder": "搜索插件...",
+  "noPlugins": "没有可用的插件",
+  "noResults": "没有找到匹配的插件",
+  "author": "作者: {0}",
+  "hint": "插件存放在 src/plugins/plugins/ 目录下"
+}

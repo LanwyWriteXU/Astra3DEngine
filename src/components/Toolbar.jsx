@@ -39,7 +39,8 @@ function Toolbar({
   onOpenRecentProject,
   onExportAsAstra,
   onImportAstra,
-  onOpenSnapshots
+  onOpenSnapshots,
+  onOpenPluginSettings
 }) {
   const fileMenuRef = useRef(null);
   const editMenuRef = useRef(null);
@@ -163,6 +164,11 @@ function Toolbar({
       label: msg('menu.preferences'),
       icon: <IconSettings className="menu-icon" />,
       onClick: onOpenPreferences
+    },
+    {
+      label: msg('menu.plugins') || '插件管理',
+      icon: <IconSettings className="menu-icon" />,
+      onClick: onOpenPluginSettings
     }
   ];
 

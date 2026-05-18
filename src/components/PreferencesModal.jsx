@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { msg, getLocale, languages } from '../i18n/index.js';
 import IconClose from '../icons/close.svg?react';
+import { getAllThemes, subscribe } from '../utils/themeManager.js';
 
 function PreferencesModal({ 
   isOpen, 
   onClose, 
   theme, 
-  onToggleTheme, 
+  onSetTheme,
   onToggleLocale, 
   onSetLocale,
   autoSaveEnabled,
@@ -16,7 +17,15 @@ function PreferencesModal({
 }) {
   const [activeCategory, setActiveCategory] = useState('appearance');
   const [localMaxSnapshots, setLocalMaxSnapshots] = useState(maxSnapshots);
+  const [availableThemes, setAvailableThemes] = useState(getAllThemes());
   const currentLocale = getLocale();
+
+  useEffect(() => {
+    const unsubscribe = subscribe((themes) => {
+      setAvailableThemes(themes);
+    });
+    return unsubscribe;
+  }, []);
 
   if (!isOpen) return null;
 
@@ -46,20 +55,16 @@ function PreferencesModal({
           <h3 className="preferences-section-title">{msg('preferences.theme.title')}</h3>
           <p className="preferences-section-description">{msg('preferences.theme.description')}</p>
           <div className="preferences-options">
-            <button 
-              className={`preference-option-btn ${theme === 'dark' ? 'active' : ''}`}
-              onClick={() => theme !== 'dark' && onToggleTheme()}
-            >
-              <span className="preference-option-label">{msg('menu.darkMode')}</span>
-              {theme === 'dark' && <span className="preference-option-check">✓</span>}
-            </button>
-            <button 
-              className={`preference-option-btn ${theme === 'light' ? 'active' : ''}`}
-              onClick={() => theme !== 'light' && onToggleTheme()}
-            >
-              <span className="preference-option-label">{msg('menu.lightMode')}</span>
-              {theme === 'light' && <span className="preference-option-check">✓</span>}
-            </button>
+            {availableThemes.map(t => (
+              <button 
+                key={t.id}
+                className={`preference-option-btn ${theme === t.id ? 'active' : ''}`}
+                onClick={() => theme !== t.id && onSetTheme(t.id)}
+              >
+                <span className="preference-option-label">{t.name}</span>
+                {theme === t.id && <span className="preference-option-check">✓</span>}
+              </button>
+            ))}
           </div>
         </div>
       );

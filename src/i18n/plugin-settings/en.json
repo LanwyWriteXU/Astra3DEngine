@@ -1,0 +1,8 @@
+{
+  "title": "Plugin Manager",
+  "searchPlaceholder": "Search plugins...",
+  "noPlugins": "No plugins available",
+  "noResults": "No matching plugins found",
+  "author": "Author: {0}",
+  "hint": "Plugins are stored in src/plugins/plugins/ directory"
+}

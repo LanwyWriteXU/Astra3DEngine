@@ -185,6 +185,34 @@ interface Scene {
 - [ ] 加载画面定制
 - [ ] 打包为桌面软件（Electron/Tauri）
 
+### 9. 插件系统
+
+- [x] 插件管理器（PluginManager）
+- [x] 插件 API（ctx 对象、钩子系统）
+- [x] 插件设置界面（PluginSettingsModal）
+- [x] 插件 manifest.json 配置文件
+- [x] 插件入口脚本（userscript）
+- [x] 插件 l10n 国际化支持
+- [x] 插件设置持久化（LocalStorage）
+- [x] 主题插件示例（modern-dark-theme）
+- [x] 插件启用/禁用功能
+- [x] 插件搜索过滤
+- [ ] 插件市场/社区插件
+- [ ] 插件依赖管理
+
+**插件 l10n 结构**：
+```
+src/i18n/plugin-settings/     # 插件设置界面翻译
+src/plugins/plugins/*/l10n/   # 插件自己的翻译
+```
+
+**翻译来源**：
+| 内容 | 位置 | 获取方式 |
+|------|------|----------|
+| 插件设置界面 UI | `src/i18n/plugin-settings/` | `msg('pluginSettings.key')` |
+| 插件名称/描述 | `src/plugins/plugins/[id]/l10n/` | `pluginMsg(pluginId, 'name')` |
+| 插件内部文本 | `src/plugins/plugins/[id]/l10n/` | `ctx.msg('key')` |
+
 ---
 
 ## 四、技术挑战与解决方案
@@ -200,7 +228,7 @@ interface Scene {
 
 ### 运行时优化考虑
 
-- [ ]  对象池复用
+- [ ] 对象池复用
 - [ ] 视锥剔除（Frustum Culling）
 - [ ] 遮挡剔除（Occlusion Culling）
 - [ ] 材质合并
@@ -236,6 +264,8 @@ interface Scene {
 - [x] SVG图标系统
 - [x] Toast 弹窗系统
 - [x] 自定义 Dialog 系统（替换浏览器原生弹窗）
+- [x] 插件设置界面
+- [x] 插件系统 l10n 国际化
 
 **项目格式设计**（详见 [PROJECT_FORMAT_DESIGN.md](./PROJECT_FORMAT_DESIGN.md)）：
 - [ ] 项目文件夹结构实现
@@ -276,7 +306,7 @@ interface Scene {
 - [ ] 构建优化
 - [ ] Web平台发布
 - [ ] 桌面应用打包（Electron/Tauri）
-- [ ] 插件系统
+- [x] 插件系统（核心功能已完成）
 - [ ] 社区资源市场
 - [ ] 文档完善
 
