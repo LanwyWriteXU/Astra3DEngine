@@ -134,5 +134,46 @@
 
   "dialog.ok": "确定",
   "dialog.cancel": "取消",
-  "dialog.confirm": "确认"
+  "dialog.confirm": "确认",
+
+  "info.privacy.title": "隐私政策",
+  "info.privacy.intro": "感谢您使用 Astra 3D Engine。我们非常重视您的隐私保护，本政策说明我们如何收集、使用和保护您的信息。",
+  "info.privacy.collect.title": "信息收集",
+  "info.privacy.collect.content": "本应用在本地运行，不会主动收集或上传您的个人信息到远程服务器。您的项目文件、素材资源等数据均存储在您的本地设备上。",
+  "info.privacy.storage.title": "本地存储",
+  "info.privacy.storage.content": "应用使用浏览器的 localStorage 和 IndexedDB 来保存您的偏好设置和项目快照。这些数据仅存储在您的设备上，您可以随时在浏览器设置中清除这些数据。",
+  "info.privacy.third.title": "第三方服务",
+  "info.privacy.third.content": "检查更新功能会连接到 GitHub API 获取最新版本信息。此过程不会传输您的个人信息。",
+  "info.privacy.contact.title": "联系我们",
+  "info.privacy.contact.content": "如有任何隐私相关问题，请通过 GitHub Issues 与我们联系。",
+
+  "info.update.title": "检查更新",
+  "info.update.checking": "正在检查更新...",
+  "info.update.latest": "已是最新版本",
+  "info.update.available": "发现新版本",
+  "info.update.download": "前往下载",
+  "info.update.error": "检查更新失败",
+  "info.update.currentVersion": "当前版本",
+  "info.update.latestVersion": "最新版本",
+
+  "info.about.title": "关于",
+  "info.about.appName": "Astra 3D Engine",
+  "info.about.tagline": "一个玩笑般的 3D 引擎",
+  "info.about.description": "A Joking 3D Engine",
+  "info.about.techStack": "技术栈",
+  "info.about.links": "相关链接",
+  "info.about.website": "官方网站",
+  "info.about.source": "源代码",
+  "info.about.issues": "问题反馈",
+  "info.about.license": "开源协议",
+  "info.about.credits": "鸣谢",
+  "info.about.credit.dev": "开发",
+  "info.about.credit.support1": "精神支撑",
+  "info.about.credit.support2": "精神支持",
+  "info.about.copyright": "Copyright (c) 2026 Cyberexplorer all right reserved",
+
+  "logo.privacy": "隐私政策",
+  "logo.source": "源代码",
+  "logo.update": "检查更新",
+  "logo.about": "关于"
 }

@@ -134,5 +134,46 @@
 
   "dialog.ok": "OK",
   "dialog.cancel": "Cancel",
-  "dialog.confirm": "Confirm"
+  "dialog.confirm": "Confirm",
+
+  "info.privacy.title": "Privacy Policy",
+  "info.privacy.intro": "Thank you for using Astra 3D Engine. We take your privacy seriously. This policy explains how we collect, use, and protect your information.",
+  "info.privacy.collect.title": "Information Collection",
+  "info.privacy.collect.content": "This application runs locally and does not actively collect or upload your personal information to remote servers. Your project files, assets, and other data are stored only on your local device.",
+  "info.privacy.storage.title": "Local Storage",
+  "info.privacy.storage.content": "The application uses browser's localStorage and IndexedDB to save your preferences and project snapshots. This data is stored only on your device, and you can clear it anytime in browser settings.",
+  "info.privacy.third.title": "Third-party Services",
+  "info.privacy.third.content": "The update checker connects to GitHub API to fetch the latest version information. No personal information is transmitted during this process.",
+  "info.privacy.contact.title": "Contact Us",
+  "info.privacy.contact.content": "If you have any privacy-related questions, please contact us via GitHub Issues.",
+
+  "info.update.title": "Check for Updates",
+  "info.update.checking": "Checking for updates...",
+  "info.update.latest": "You're up to date",
+  "info.update.available": "New version available",
+  "info.update.download": "Download",
+  "info.update.error": "Failed to check for updates",
+  "info.update.currentVersion": "Current Version",
+  "info.update.latestVersion": "Latest Version",
+
+  "info.about.title": "About",
+  "info.about.appName": "Astra 3D Engine",
+  "info.about.tagline": "A Joking 3D Engine",
+  "info.about.description": "A Joking 3D Engine",
+  "info.about.techStack": "Tech Stack",
+  "info.about.links": "Links",
+  "info.about.website": "Website",
+  "info.about.source": "Source Code",
+  "info.about.issues": "Report Issue",
+  "info.about.license": "License",
+  "info.about.credits": "Credits",
+  "info.about.credit.dev": "Development",
+  "info.about.credit.support1": "Moral Support",
+  "info.about.credit.support2": "Moral Support",
+  "info.about.copyright": "Copyright (c) 2026 Cyberexplorer all right reserved",
+
+  "logo.privacy": "Privacy Policy",
+  "logo.source": "Source Code",
+  "logo.update": "Check for Updates",
+  "logo.about": "About"
 }

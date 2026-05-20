@@ -278,16 +278,16 @@ function Toolbar({
             {logoMenuOpen && (
               <div className="logo-dropdown-menu">
                 <button className="logo-menu-item" onClick={() => handleLogoMenuItemClick('privacy')}>
-                  隐私政策
+                  {msg('logo.privacy')}
                 </button>
                 <button className="logo-menu-item" onClick={() => handleLogoMenuItemClick('source')}>
-                  源代码
+                  {msg('logo.source')}
                 </button>
                 <button className="logo-menu-item" onClick={() => handleLogoMenuItemClick('update')}>
-                  检查更新
+                  {msg('logo.update')}
                 </button>
                 <button className="logo-menu-item" onClick={() => handleLogoMenuItemClick('about')}>
-                  关于
+                  {msg('logo.about')}
                 </button>
               </div>
             )}
