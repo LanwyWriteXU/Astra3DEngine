@@ -6,7 +6,7 @@ node_modules/
 # Build outputs
 dist/
 dist-ssr/
-dust-electron/
+dist-electron/
 *.local
 
 # Editor directories and files

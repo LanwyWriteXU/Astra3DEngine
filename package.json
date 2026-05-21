@@ -13,6 +13,7 @@
     "desktop:preview": "electron dist-electron/main.js"
   },
   "dependencies": {
+    "cannon-es": "^0.20.0",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
     "react": "^18.2.0",
