@@ -240,15 +240,35 @@ function AppContent() {
         position: [0, 0, 0],
         rotation: [0, 0, 0],
         scale: [1, 1, 1],
-        color: '#66ccff'
+        color: '#66ccff',
+        faceTextures: type === 'cube' ? {
+          right: null,
+          left: null,
+          top: null,
+          bottom: null,
+          front: null,
+          back: null
+        } : undefined
       };
       setSceneObjectsWithHistory(prev => [...prev, newObject]);
     }
   }, [setSceneObjectsWithHistory]);
 
+  const textureLoaderRef = useRef(new THREE.TextureLoader());
+
   const handleImportAsset = useCallback((file) => {
     const fileExt = file.name.split('.').pop().toLowerCase();
-    const assetType = ['gltf', 'glb'].includes(fileExt) ? 'model' : 'texture';
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
+    const modelExts = ['gltf', 'glb'];
+    
+    let assetType;
+    if (modelExts.includes(fileExt)) {
+      assetType = 'model';
+    } else if (imageExts.includes(fileExt)) {
+      assetType = 'texture';
+    } else {
+      assetType = 'unknown';
+    }
 
     const asset = {
       id: Date.now(),
@@ -282,6 +302,20 @@ function AppContent() {
         undefined,
         (error) => {
           console.error('Error loading GLTF:', error);
+        }
+      );
+    } else if (assetType === 'texture') {
+      textureLoaderRef.current.load(
+        asset.url,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          asset.texture = texture;
+          setAssets(prev => [...prev, asset]);
+        },
+        undefined,
+        (error) => {
+          console.error('Error loading texture:', error);
+          setAssets(prev => [...prev, asset]);
         }
       );
     } else {
@@ -1092,6 +1126,7 @@ function AppContent() {
               onApplyToPrefab={handleApplyToPrefab}
               vertical={inspectorCollapsed}
               onCollapseChange={setInspectorCollapsed}
+              assets={assets}
             />
           </div>
         </div>

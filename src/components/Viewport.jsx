@@ -879,6 +879,17 @@ function Viewport({
     });
 
     objects.forEach(obj => {
+      if (obj.type === 'cube' && !obj.faceTextures) {
+        obj.faceTextures = {
+          right: null,
+          left: null,
+          top: null,
+          bottom: null,
+          front: null,
+          back: null
+        };
+      }
+      
       if (meshesRef.current[obj.id]) {
         const mesh = meshesRef.current[obj.id];
         
@@ -913,7 +924,24 @@ function Viewport({
             THREE.MathUtils.degToRad(obj.rotation[2])
           );
           mesh.scale.set(obj.scale[0], obj.scale[1], obj.scale[2]);
-          if (mesh.material && mesh.material.color) {
+          
+          if (obj.type === 'cube' && obj.faceTextures && Array.isArray(mesh.material)) {
+            const faceNames = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+            faceNames.forEach((faceName, index) => {
+              const textureId = obj.faceTextures[faceName];
+              const textureAsset = textureId ? assetsRef.current.find(a => a.id === textureId) : null;
+              
+              mesh.material[index].color.setStyle(obj.color || '#4a90d9');
+              
+              if (textureAsset && textureAsset.texture) {
+                mesh.material[index].map = textureAsset.texture;
+                mesh.material[index].needsUpdate = true;
+              } else {
+                mesh.material[index].map = null;
+                mesh.material[index].needsUpdate = true;
+              }
+            });
+          } else if (mesh.material && mesh.material.color) {
             mesh.material.color.setStyle(obj.color || '#4a90d9');
           }
         }
@@ -958,11 +986,35 @@ function Viewport({
             geometry = new THREE.BoxGeometry(1, 1, 1);
         }
 
-        const material = new THREE.MeshStandardMaterial({
-          color: obj.color || 0x4a90d9,
-          metalness: 0.3,
-          roughness: 0.7
-        });
+        let material;
+        if (obj.type === 'cube' && obj.faceTextures) {
+          const faceNames = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+          const materials = faceNames.map(faceName => {
+            const textureId = obj.faceTextures[faceName];
+            const textureAsset = textureId ? assetsRef.current.find(a => a.id === textureId) : null;
+            
+            if (textureAsset && textureAsset.texture) {
+              return new THREE.MeshStandardMaterial({
+                map: textureAsset.texture,
+                metalness: 0.3,
+                roughness: 0.7
+              });
+            } else {
+              return new THREE.MeshStandardMaterial({
+                color: obj.color || 0x4a90d9,
+                metalness: 0.3,
+                roughness: 0.7
+              });
+            }
+          });
+          material = materials;
+        } else {
+          material = new THREE.MeshStandardMaterial({
+            color: obj.color || 0x4a90d9,
+            metalness: 0.3,
+            roughness: 0.7
+          });
+        }
 
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(obj.position[0], obj.position[1], obj.position[2]);

@@ -12,7 +12,8 @@ function InspectorPanel({
   onDisconnectPrefab,
   onApplyToPrefab,
   vertical,
-  onCollapseChange
+  onCollapseChange,
+  assets
 }) {
   const handleTransformChange = (property, index, value) => {
     if (!selectedObject) return;
@@ -31,6 +32,14 @@ function InspectorPanel({
     if (!selectedObject) return;
     onUpdateObject(selectedObject.id, { name });
   };
+
+  const handleFaceTextureChange = (faceName, textureId) => {
+    if (!selectedObject || !selectedObject.faceTextures) return;
+    const newFaceTextures = { ...selectedObject.faceTextures, [faceName]: textureId };
+    onUpdateObject(selectedObject.id, { faceTextures: newFaceTextures });
+  };
+
+  const textureAssets = (assets || []).filter(a => a.assetType === 'texture' && a.texture);
 
   const getPrefab = () => {
     if (!selectedObject || !selectedObject.prefabId || !prefabs) return null;
@@ -130,6 +139,26 @@ function InspectorPanel({
               )}
             </div>
           </div>
+          {selectedObject.type === 'cube' && selectedObject.faceTextures && (
+            <div className="inspector-section">
+              <div className="inspector-section-title">{msg('inspector.faceTextures')}</div>
+              {['right', 'left', 'top', 'bottom', 'front', 'back'].map(faceName => (
+                <div key={faceName} className="inspector-row">
+                  <label className="inspector-label">{msg(`inspector.face.${faceName}`)}</label>
+                  <select
+                    className="inspector-input inspector-select"
+                    value={selectedObject.faceTextures[faceName] || ''}
+                    onChange={(e) => handleFaceTextureChange(faceName, e.target.value ? parseInt(e.target.value) : null)}
+                  >
+                    <option value="">{msg('inspector.noTexture')}</option>
+                    {textureAssets.map(asset => (
+                      <option key={asset.id} value={asset.id}>{asset.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="inspector-section">
