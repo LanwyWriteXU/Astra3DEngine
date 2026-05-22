@@ -173,6 +173,8 @@ function Viewport({
         if (key in keysPressed) {
           keysPressed[key] = true;
         }
+        e.stopPropagation();
+        e.preventDefault();
       }
     };
 
@@ -292,7 +294,7 @@ function Viewport({
       e.preventDefault();
     };
 
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('keyup', handleKeyUp);
     renderer.domElement.addEventListener('mousedown', handleMouseDown);
     renderer.domElement.addEventListener('mouseup', handleMouseUp);
@@ -459,7 +461,7 @@ function Viewport({
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keyup', handleKeyUp);
       renderer.domElement.removeEventListener('mousedown', handleMouseDown);
       renderer.domElement.removeEventListener('mouseup', handleMouseUp);
