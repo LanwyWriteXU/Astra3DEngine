@@ -25,17 +25,15 @@ function CollapsiblePanel({
   const [collapsed, setCollapsed] = useState(getInitialState);
 
   const handleToggle = useCallback(() => {
-    setCollapsed(prev => {
-      const newState = !prev;
-      if (storageKey) {
-        localStorage.setItem(storageKey, String(newState));
-      }
-      if (onCollapseChange) {
-        onCollapseChange(newState);
-      }
-      return newState;
-    });
-  }, [storageKey, onCollapseChange]);
+    const newState = !collapsed;
+    setCollapsed(newState);
+    if (storageKey) {
+      localStorage.setItem(storageKey, String(newState));
+    }
+    if (onCollapseChange) {
+      onCollapseChange(newState);
+    }
+  }, [storageKey, onCollapseChange, collapsed]);
 
   if (vertical && collapsed) {
     return (

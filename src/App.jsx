@@ -87,33 +87,6 @@ function AppContent() {
 
   const hasFileSystemAccess = 'showSaveFilePicker' in window && 'showOpenFilePicker' in window;
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
-
-      switch (e.key.toLowerCase()) {
-        case 'q':
-          setCurrentTool('select');
-          break;
-        case 'w':
-          setCurrentTool('move');
-          break;
-        case 'e':
-          setCurrentTool('rotate');
-          break;
-        case 'r':
-          setCurrentTool('scale');
-          break;
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   const handleToggleLocale = useCallback(() => {
     toggleLocale();
     const newLocale = getLocale();
@@ -204,12 +177,13 @@ function AppContent() {
         const isSelected = prev.some(o => o && o.id === object.id);
         if (isSelected) {
           const newSelection = prev.filter(o => o && o.id !== object.id);
-          setSelectedObject(newSelection.length === 1 ? newSelection[0] : null);
+          setTimeout(() => {
+            setSelectedObject(newSelection.length > 0 ? newSelection[0] : null);
+          }, 0);
           return newSelection;
         } else {
-          const newSelection = [...prev, object];
           setSelectedObject(object);
-          return newSelection;
+          return [...prev, object];
         }
       });
     } else {
@@ -362,6 +336,41 @@ function AppContent() {
     setSelectedObjects([]);
   }, [selectedObjects, setSceneObjectsWithHistory]);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'q':
+          setCurrentTool('select');
+          break;
+        case 'w':
+          setCurrentTool('move');
+          break;
+        case 'e':
+          setCurrentTool('rotate');
+          break;
+        case 'r':
+          setCurrentTool('scale');
+          break;
+        case 'delete':
+        case 'backspace':
+          if (selectedObjects.length > 1) {
+            handleDeleteSelectedObjects();
+          } else if (selectedObject) {
+            handleDeleteObject(selectedObject.id);
+          }
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedObject, selectedObjects, handleDeleteObject, handleDeleteSelectedObjects]);
+
   const handleUpdateObject = useCallback((id, updates, recordHistory = true) => {
     setSceneObjectsWithHistory(prev => prev.map(obj =>
       obj.id === id ? { ...obj, ...updates } : obj
@@ -422,39 +431,112 @@ function AppContent() {
   }, [handleUpdateObject]);
 
   const handleReorderObjects = useCallback((draggedId, targetId, position) => {
+    console.log('=== handleReorderObjects ===');
+    console.log('draggedId:', draggedId, 'targetId:', targetId, 'position:', position);
+    
     setSceneObjectsWithHistory(prev => {
+      console.log('prev objects:', prev.map(o => ({ id: o.id, name: o.name, parentId: o.parentId })));
+      
       const objects = [...prev];
+      
       const draggedIndex = objects.findIndex(o => o.id === draggedId);
-      if (draggedIndex === -1) return prev;
+      if (draggedIndex === -1) {
+        console.log('ERROR: draggedIndex not found');
+        return prev;
+      }
       
       const draggedObj = { ...objects[draggedIndex] };
+      console.log('draggedObj:', { id: draggedObj.id, name: draggedObj.name, parentId: draggedObj.parentId });
+      
+      const getAllDescendantIds = (parentId) => {
+        const descendants = new Set([parentId]);
+        objects.filter(o => o.parentId === parentId).forEach(child => {
+          const childDescendants = getAllDescendantIds(child.id);
+          childDescendants.forEach(id => descendants.add(id));
+        });
+        return descendants;
+      };
+      
+      const draggedDescendants = getAllDescendantIds(draggedId);
+      console.log('draggedDescendants:', Array.from(draggedDescendants));
       
       if (targetId === null) {
+        console.log('targetId is null, moving to end');
         draggedObj.parentId = null;
         objects.splice(draggedIndex, 1);
         objects.push(draggedObj);
+        console.log('result objects:', objects.map(o => ({ id: o.id, name: o.name, parentId: o.parentId })));
         return objects;
       }
       
+      if (draggedDescendants.has(targetId)) {
+        console.log('ERROR: targetId is descendant of draggedId');
+        return prev;
+      }
+      
       const targetIndex = objects.findIndex(o => o.id === targetId);
-      if (targetIndex === -1) return prev;
+      if (targetIndex === -1) {
+        console.log('ERROR: targetIndex not found');
+        return prev;
+      }
       
       const targetObj = objects[targetIndex];
-      
-      objects.splice(draggedIndex, 1);
+      console.log('targetObj:', { id: targetObj.id, name: targetObj.name, parentId: targetObj.parentId });
       
       if (position === 'inside') {
         draggedObj.parentId = targetId;
-        const newTargetIndex = objects.findIndex(o => o.id === targetId);
-        const childrenOfTarget = objects.filter(o => o.parentId === targetId);
-        const insertIndex = newTargetIndex + 1 + childrenOfTarget.length;
-        objects.splice(insertIndex, 0, draggedObj);
+        console.log('Setting parentId to targetId:', targetId);
       } else {
         draggedObj.parentId = targetObj.parentId || null;
-        const newTargetIndex = objects.findIndex(o => o.id === targetId);
-        const insertIndex = position === 'before' ? newTargetIndex : newTargetIndex + 1;
-        objects.splice(insertIndex, 0, draggedObj);
+        console.log('Setting parentId to targetObj.parentId:', targetObj.parentId);
       }
+      
+      objects.splice(draggedIndex, 1);
+      console.log('After splice, objects length:', objects.length);
+      
+      const newTargetIndex = objects.findIndex(o => o.id === targetId);
+      if (newTargetIndex === -1) {
+        console.log('ERROR: newTargetIndex not found after splice, pushing to end');
+        objects.push(draggedObj);
+        console.log('result objects:', objects.map(o => ({ id: o.id, name: o.name, parentId: o.parentId })));
+        return objects;
+      }
+      
+      console.log('newTargetIndex:', newTargetIndex);
+      
+      let insertIndex;
+      if (position === 'inside') {
+        insertIndex = newTargetIndex + 1;
+        for (let i = newTargetIndex + 1; i < objects.length; i++) {
+          if (objects[i].parentId === targetId) {
+            insertIndex = i + 1;
+          } else {
+            break;
+          }
+        }
+        console.log('inside: insertIndex:', insertIndex);
+      } else if (position === 'before') {
+        insertIndex = newTargetIndex;
+        console.log('before: insertIndex:', insertIndex);
+      } else {
+        insertIndex = newTargetIndex + 1;
+        
+        const targetParentId = targetObj.parentId;
+        if (targetParentId) {
+          for (let i = newTargetIndex + 1; i < objects.length; i++) {
+            if (objects[i].parentId === targetParentId) {
+              insertIndex = i + 1;
+            } else {
+              break;
+            }
+          }
+        }
+        console.log('after: insertIndex:', insertIndex);
+      }
+      
+      objects.splice(insertIndex, 0, draggedObj);
+      
+      console.log('result objects:', objects.map(o => ({ id: o.id, name: o.name, parentId: o.parentId })));
       
       return objects;
     });
@@ -1107,6 +1189,7 @@ function AppContent() {
               objects={sceneObjects}
               assets={assets}
               selectedObject={selectedObject}
+              selectedObjects={selectedObjects}
               onSelectObject={handleObjectSelect}
               currentTool={currentTool}
               onToolChange={setCurrentTool}
@@ -1128,6 +1211,7 @@ function AppContent() {
               vertical={inspectorCollapsed}
               onCollapseChange={setInspectorCollapsed}
               assets={assets}
+              objects={sceneObjects}
             />
           </div>
         </div>

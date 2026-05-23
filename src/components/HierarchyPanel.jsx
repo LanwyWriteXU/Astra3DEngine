@@ -14,6 +14,7 @@ import IconDuplicate from '../icons/duplicate.svg?react';
 import IconRename from '../icons/rename.svg?react';
 import IconPlus from '../icons/plus.svg?react';
 import IconSearch from '../icons/search.svg?react';
+import IconChevronCollapsed from '../icons/chevron-collapsed.svg?react';
 
 function HierarchyPanel({ 
   objects, 
@@ -42,10 +43,60 @@ function HierarchyPanel({
   const [dropPosition, setDropPosition] = useState(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
   const addMenuRef = useRef(null);
   const contextMenuRef = useRef(null);
   const renameInputRef = useRef(null);
   const searchInputRef = useRef(null);
+  const objectsRef = useRef(objects);
+
+  useEffect(() => {
+    objectsRef.current = objects;
+  }, [objects]);
+
+  const computedExpandedIds = useMemo(() => {
+    const result = new Set(expandedIds);
+    
+    console.log('expandedIds (user controlled):', Array.from(expandedIds));
+    console.log('objects with parentId:', objects.filter(o => o.parentId).map(o => ({ name: o.name, parentId: o.parentId })));
+    
+    return result;
+  }, [objects, expandedIds]);
+
+  useEffect(() => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      
+      objects.forEach(obj => {
+        if (obj.parentId && !prev.has(obj.parentId)) {
+          next.add(obj.parentId);
+          changed = true;
+          console.log('Auto-expanding parent:', obj.parentId, 'for child:', obj.name);
+        }
+      });
+      
+      return changed ? next : prev;
+    });
+  }, [objects]);
+
+  const toggleExpanded = (id) => {
+    console.log('=== toggleExpanded ===');
+    console.log('id:', id);
+    
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        console.log('Removing from expanded');
+        next.delete(id);
+      } else {
+        console.log('Adding to expanded');
+        next.add(id);
+      }
+      console.log('new expandedIds:', Array.from(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -176,7 +227,10 @@ function HierarchyPanel({
   const handleDragStart = (e, obj) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', obj.id.toString());
+    e.dataTransfer.setData('application/json', JSON.stringify({ id: obj.id }));
     setDraggedId(obj.id);
+    setDropTarget(null);
+    setDropPosition(null);
   };
 
   const handleDragEnd = () => {
@@ -187,7 +241,8 @@ function HierarchyPanel({
 
   const handleDragOver = (e, obj) => {
     e.preventDefault();
-    if (draggedId === obj.id) return;
+    
+    if (!draggedId || draggedId === obj.id) return;
     
     const descendantIds = getAllDescendantIds(draggedId);
     if (descendantIds.has(obj.id)) return;
@@ -196,33 +251,67 @@ function HierarchyPanel({
     const y = e.clientY - rect.top;
     const height = rect.height;
     
-    if (y < height * 0.25) {
-      setDropPosition('before');
-    } else if (y > height * 0.75) {
-      setDropPosition('after');
+    let newDropPosition;
+    if (y < height * 0.33) {
+      newDropPosition = 'before';
+    } else if (y > height * 0.67) {
+      newDropPosition = 'after';
     } else {
-      setDropPosition('inside');
+      newDropPosition = 'inside';
     }
     
+    setDropPosition(newDropPosition);
     setDropTarget(obj.id);
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDragLeave = () => {
-    setDropTarget(null);
-    setDropPosition(null);
+  const handleDragLeave = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isOutside = (
+      e.clientX < rect.left ||
+      e.clientX >= rect.right ||
+      e.clientY < rect.top ||
+      e.clientY >= rect.bottom
+    );
+    if (isOutside) {
+      setDropTarget(null);
+      setDropPosition(null);
+    }
   };
 
   const handleDrop = (e, targetObj) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    if (!draggedId || draggedId === targetObj.id) return;
+    console.log('=== handleDrop ===');
+    console.log('draggedId:', draggedId, 'targetObj.id:', targetObj.id, 'dropPosition:', dropPosition);
+    
+    if (!draggedId || draggedId === targetObj.id) {
+      console.log('SKIP: no draggedId or same object');
+      return;
+    }
     
     const descendantIds = getAllDescendantIds(draggedId);
-    if (descendantIds.has(targetObj.id)) return;
+    if (descendantIds.has(targetObj.id)) {
+      console.log('SKIP: target is descendant');
+      return;
+    }
+
+    const finalDropPosition = dropPosition || 'after';
+    console.log('finalDropPosition:', finalDropPosition);
+    console.log('calling onReorderObjects...');
 
     if (onReorderObjects) {
-      onReorderObjects(draggedId, targetObj.id, dropPosition);
+      onReorderObjects(draggedId, targetObj.id, finalDropPosition);
+    }
+    
+    if (finalDropPosition === 'inside') {
+      setExpandedIds(prev => {
+        const next = new Set(prev);
+        next.add(targetObj.id);
+        console.log('Expanding parent:', targetObj.id);
+        return next;
+      });
     }
     
     setDraggedId(null);
@@ -232,10 +321,34 @@ function HierarchyPanel({
 
   const handleDropOnEmpty = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     
-    if (!draggedId) return;
+    console.log('=== handleDropOnEmpty ===');
+    console.log('draggedId:', draggedId);
     
-    if (onReorderObjects) {
+    if (!draggedId) {
+      console.log('SKIP: no draggedId');
+      return;
+    }
+    
+    const data = e.dataTransfer.getData('application/json');
+    console.log('data from dataTransfer:', data);
+    
+    if (data) {
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.id && onReorderObjects) {
+          console.log('Calling onReorderObjects with parsed.id:', parsed.id);
+          onReorderObjects(parsed.id, null, 'end');
+        }
+      } catch (err) {
+        if (onReorderObjects) {
+          console.log('Calling onReorderObjects with draggedId:', draggedId);
+          onReorderObjects(draggedId, null, 'end');
+        }
+      }
+    } else if (onReorderObjects) {
+      console.log('Calling onReorderObjects with draggedId:', draggedId);
       onReorderObjects(draggedId, null, 'end');
     }
     
@@ -249,6 +362,15 @@ function HierarchyPanel({
     const isDragged = draggedId === obj.id;
     const hasChildren = objects.some(o => o.parentId === obj.id);
     const isSelected = selectedObjects.some(o => o && o.id === obj.id);
+    const isExpanded = computedExpandedIds.has(obj.id);
+    
+    if (depth === 0) {
+      console.log(`renderObject: ${obj.name} (id:${obj.id}), hasChildren:${hasChildren}, isExpanded:${isExpanded}, parentId:${obj.parentId}`);
+      if (hasChildren) {
+        const children = objects.filter(o => o.parentId === obj.id);
+        console.log(`  children of ${obj.name}:`, children.map(c => c.name));
+      }
+    }
     
     return (
       <React.Fragment key={obj.id}>
@@ -259,8 +381,16 @@ function HierarchyPanel({
             if (isRenaming) return;
             onSelectObject(obj, e.ctrlKey || e.metaKey);
           }}
+          onDoubleClick={(e) => {
+            if (hasChildren) {
+              console.log('=== Double click to toggle ===');
+              console.log('obj.id:', obj.id, 'obj.name:', obj.name);
+              e.stopPropagation();
+              toggleExpanded(obj.id);
+            }
+          }}
           onContextMenu={(e) => handleContextMenu(e, obj)}
-          draggable
+          draggable={true}
           onDragStart={(e) => handleDragStart(e, obj)}
           onDragEnd={handleDragEnd}
           onDragOver={(e) => handleDragOver(e, obj)}
@@ -268,7 +398,18 @@ function HierarchyPanel({
           onDrop={(e) => handleDrop(e, obj)}
         >
           {hasChildren && (
-            <span className="hierarchy-expand-icon">▼</span>
+            <span 
+              className={`hierarchy-expand-icon ${isExpanded ? 'expanded' : ''}`}
+              onClick={(e) => {
+                console.log('=== Expand icon clicked ===');
+                console.log('obj.id:', obj.id, 'obj.name:', obj.name);
+                e.stopPropagation();
+                e.preventDefault();
+                toggleExpanded(obj.id);
+              }}
+            >
+              <IconChevronCollapsed className="hierarchy-expand-svg" />
+            </span>
           )}
           {!hasChildren && depth > 0 && (
             <span className="hierarchy-expand-placeholder" />
@@ -306,7 +447,7 @@ function HierarchyPanel({
             <IconDelete className="btn-icon" />
           </button>
         </div>
-        {objects
+        {isExpanded && objects
           .filter(o => o.parentId === obj.id)
           .sort((a, b) => {
             const indexA = objects.findIndex(item => item.id === a.id);
@@ -394,7 +535,11 @@ function HierarchyPanel({
       </div>
       <div 
         className="panel-content"
-        onDragOver={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          if (!draggedId) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
         onDrop={handleDropOnEmpty}
       >
         {filteredObjects.length === 0 ? (

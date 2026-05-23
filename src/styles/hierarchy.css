@@ -64,19 +64,23 @@
 .hierarchy-item {
   display: flex;
   align-items: center;
-  padding: 5px 6px;
-  margin: 1px 0;
-  border-radius: 3px;
+  padding: 3px 6px;
+  margin: 0;
+  border-radius: 0;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color 0.1s;
+  border-left: 2px solid transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .hierarchy-item:hover {
-  background-color: rgba(64, 120, 192, 0.2);
+  background-color: var(--hover-bg);
 }
 
 .hierarchy-item.selected {
-  background-color: var(--accent-active);
+  background-color: var(--accent);
+  border-left-color: var(--accent-active);
 }
 
 .hierarchy-item-icon {
@@ -118,8 +122,7 @@
 }
 
 .hierarchy-item.prefab-instance {
-  border-left: 2px solid var(--accent-active);
-  padding-left: 4px;
+  border-left-color: var(--accent-active);
 }
 
 .hierarchy-prefab-badge {
@@ -135,21 +138,21 @@
 .context-menu {
   background-color: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 3px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   min-width: 160px;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .context-menu-item {
-  padding: 8px 12px;
+  padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color 0.1s;
 }
 
 .context-menu-item:hover {
-  background-color: var(--hover-bg);
+  background-color: var(--accent);
 }
 
 .context-menu-item.context-menu-danger {
@@ -196,32 +199,71 @@
 }
 
 .hierarchy-item.drop-before {
-  border-top: 2px solid var(--accent-active);
-  margin-top: -1px;
+  position: relative;
+}
+
+.hierarchy-item.drop-before::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--accent-active);
+  border-radius: 1px;
 }
 
 .hierarchy-item.drop-after {
-  border-bottom: 2px solid var(--accent-active);
-  margin-bottom: -1px;
+  position: relative;
+}
+
+.hierarchy-item.drop-after::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--accent-active);
+  border-radius: 1px;
 }
 
 .hierarchy-item.drop-inside {
   background-color: rgba(64, 120, 192, 0.3);
-  outline: 2px solid var(--accent-active);
+  border-left-color: var(--accent-active);
+  border-left-width: 3px;
 }
 
 .hierarchy-expand-icon {
-  width: 12px;
-  height: 12px;
-  font-size: 8px;
+  width: 16px;
+  height: 16px;
   margin-right: 4px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.hierarchy-expand-icon:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+.hierarchy-expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.hierarchy-expand-svg {
+  width: 12px;
+  height: 12px;
 }
 
 .hierarchy-expand-placeholder {
   width: 16px;
   margin-right: 4px;
+  flex-shrink: 0;
 }

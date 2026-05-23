@@ -92,26 +92,27 @@
 
 .inspector-vector3 {
   display: flex;
-  gap: 3px;
+  gap: 4px;
   flex: 1;
 }
 
 .vector-input {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 4px;
 }
 
 .vector-input input {
-  width: 100%;
+  flex: 1;
   text-align: center;
 }
 
 .vector-label {
   font-size: 10px;
-  color: var(--text-secondary);
-  margin-top: 1px;
+  color: var(--text-muted);
+  width: 10px;
+  flex-shrink: 0;
 }
 
 .inspector-empty {

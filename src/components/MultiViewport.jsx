@@ -35,6 +35,7 @@ function MultiViewport({
   objects,
   assets,
   selectedObject,
+  selectedObjects,
   onSelectObject,
   currentTool,
   onToolChange,
@@ -85,6 +86,7 @@ function MultiViewport({
           objects={objects}
           assets={assets}
           selectedObject={selectedObject}
+          selectedObjects={selectedObjects}
           onSelectObject={onSelectObject}
           currentTool={currentTool}
           onToolChange={onToolChange}

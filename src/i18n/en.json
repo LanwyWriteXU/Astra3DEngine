@@ -68,6 +68,8 @@
   "inspector.object": "Object",
   "inspector.name": "Name",
   "inspector.type": "Type",
+  "inspector.parent": "Parent",
+  "inspector.none": "None",
   "inspector.color": "Color",
   "inspector.transform": "Transform",
   "inspector.position": "Position",

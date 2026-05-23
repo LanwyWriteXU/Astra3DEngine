@@ -1,5 +1,36 @@
 # 更新日志
 
+## 2026-05-23 层级面板拖拽与父子关系修复
+
+### BUG修复
+- **拖拽排序问题**：
+  - 修复拖拽对象调整顺序时跳到末尾的问题
+  - 原因：事件冒泡导致 `handleDrop` 和 `handleDropOnEmpty` 都被触发
+  - 解决：添加 `e.stopPropagation()` 阻止事件冒泡
+- **展开/折叠问题**：
+  - 修复父对象无法折叠的问题
+  - 原因：`computedExpandedIds` 自动展开所有父对象
+  - 解决：简化为只使用用户控制的展开状态
+
+### 新增功能
+- **双击展开/折叠**：双击父对象可展开/折叠子对象
+- **展开图标**：
+  - 新增 `chevron-collapsed.svg` 现代扁平风箭头图标
+  - 替代原来的 `▶` 字符
+  - 展开时通过 CSS 旋转 90 度
+
+### 改进
+- 添加调试日志帮助定位问题
+- 展开图标尺寸增大（12px → 16px）
+- 展开图标 hover 时显示背景色
+
+### 修改文件
+- `src/components/HierarchyPanel.jsx` - 拖拽修复、展开修复、双击功能
+- `src/App.jsx` - 调试日志
+- `src/components/InspectorPanel.jsx` - 调试日志
+- `src/styles/hierarchy.css` - 图标样式
+- `src/icons/chevron-collapsed.svg` - 新建
+
 ## 2026-05-22 小游戏完善
 
 ### 新增功能

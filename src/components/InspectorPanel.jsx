@@ -13,7 +13,8 @@ function InspectorPanel({
   onApplyToPrefab,
   vertical,
   onCollapseChange,
-  assets
+  assets,
+  objects
 }) {
   const handleTransformChange = (property, index, value) => {
     if (!selectedObject) return;
@@ -44,6 +45,45 @@ function InspectorPanel({
     onUpdateObject(selectedObject.id, { textureId: textureId || null });
   };
 
+  const handleParentChange = (parentId) => {
+    console.log('=== handleParentChange ===');
+    console.log('parentId:', parentId, 'selectedObject:', selectedObject?.id);
+    
+    if (!selectedObject) {
+      console.log('SKIP: no selectedObject');
+      return;
+    }
+    
+    const newParentId = parentId === '' ? null : parentId;
+    console.log('newParentId:', newParentId);
+    
+    if (newParentId === selectedObject.id) {
+      console.log('SKIP: same id');
+      return;
+    }
+    
+    const getAllDescendantIds = (objId) => {
+      const descendants = new Set([objId]);
+      const children = (objects || []).filter(o => o.parentId === objId);
+      children.forEach(child => {
+        const childDescendants = getAllDescendantIds(child.id);
+        childDescendants.forEach(id => descendants.add(id));
+      });
+      return descendants;
+    };
+    
+    const descendants = getAllDescendantIds(selectedObject.id);
+    console.log('descendants:', Array.from(descendants));
+    
+    if (newParentId && descendants.has(newParentId)) {
+      console.log('SKIP: newParentId is descendant');
+      return;
+    }
+    
+    console.log('Calling onUpdateObject with parentId:', newParentId);
+    onUpdateObject(selectedObject.id, { parentId: newParentId });
+  };
+
   const textureAssets = (assets || []).filter(a => a.assetType === 'texture' && a.texture);
 
   const getPrefab = () => {
@@ -60,6 +100,29 @@ function InspectorPanel({
     const newOverrides = { ...currentOverrides, [property]: !currentOverrides[property] };
     onUpdateObject(selectedObject.id, { overrides: newOverrides });
   };
+
+  const getParentOptions = () => {
+    if (!objects || !selectedObject) return [];
+    
+    const getAllDescendantIds = (objId) => {
+      const descendants = new Set([objId]);
+      const children = objects.filter(o => o.parentId === objId);
+      children.forEach(child => {
+        const childDescendants = getAllDescendantIds(child.id);
+        childDescendants.forEach(id => descendants.add(id));
+      });
+      return descendants;
+    };
+    
+    const descendants = getAllDescendantIds(selectedObject.id);
+    
+    return objects.filter(obj => 
+      obj.id !== selectedObject.id && 
+      !descendants.has(obj.id)
+    );
+  };
+
+  const parentOptions = getParentOptions();
 
   const renderContent = () => {
     if (!selectedObject) {
@@ -122,6 +185,19 @@ function InspectorPanel({
               disabled
               style={{ opacity: 0.6 }}
             />
+          </div>
+          <div className="inspector-row">
+            <label className="inspector-label">{msg('inspector.parent')}</label>
+            <select
+              className="inspector-input inspector-select"
+              value={selectedObject.parentId || ''}
+              onChange={(e) => handleParentChange(e.target.value)}
+            >
+              <option value="">{msg('inspector.none')}</option>
+              {parentOptions.map(obj => (
+                <option key={obj.id} value={obj.id}>{obj.name}</option>
+              ))}
+            </select>
           </div>
           <div className="inspector-row">
             <label className="inspector-label">{msg('inspector.color')}</label>
@@ -189,13 +265,13 @@ function InspectorPanel({
             <div className="inspector-vector3">
               {['X', 'Y', 'Z'].map((axis, i) => (
                 <div key={axis} className="vector-input">
+                  <span className="vector-label">{axis}</span>
                   <input
                     type="number"
                     className="inspector-input"
                     value={selectedObject.position[i]}
                     onChange={(e) => handleTransformChange('position', i, e.target.value)}
                   />
-                  <div className="vector-label">{axis}</div>
                 </div>
               ))}
             </div>
@@ -206,13 +282,13 @@ function InspectorPanel({
             <div className="inspector-vector3">
               {['X', 'Y', 'Z'].map((axis, i) => (
                 <div key={axis} className="vector-input">
+                  <span className="vector-label">{axis}</span>
                   <input
                     type="number"
                     className="inspector-input"
                     value={selectedObject.rotation[i]}
                     onChange={(e) => handleTransformChange('rotation', i, e.target.value)}
                   />
-                  <div className="vector-label">{axis}</div>
                 </div>
               ))}
             </div>
@@ -224,6 +300,7 @@ function InspectorPanel({
               <div className="inspector-vector3">
                 {['X', 'Y', 'Z'].map((axis, i) => (
                   <div key={axis} className="vector-input">
+                    <span className="vector-label">{axis}</span>
                     <input
                       type="number"
                       className="inspector-input"
@@ -232,7 +309,6 @@ function InspectorPanel({
                       min="0.01"
                       step="0.1"
                     />
-                    <div className="vector-label">{axis}</div>
                   </div>
                 ))}
               </div>

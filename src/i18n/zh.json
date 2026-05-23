@@ -68,6 +68,8 @@
   "inspector.object": "对象",
   "inspector.name": "名称",
   "inspector.type": "类型",
+  "inspector.parent": "父对象",
+  "inspector.none": "无",
   "inspector.color": "颜色",
   "inspector.transform": "变换",
   "inspector.position": "位置",

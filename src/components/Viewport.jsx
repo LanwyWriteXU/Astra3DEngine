@@ -27,6 +27,7 @@ function Viewport({
   objects, 
   assets, 
   selectedObject, 
+  selectedObjects = [],
   onSelectObject, 
   currentTool, 
   onToolChange, 
@@ -51,7 +52,9 @@ function Viewport({
   const orbitControlsRef = useRef(null);
   const meshesRef = useRef({});
   const animationRef = useRef(null);
+  const objectsRef = useRef(objects);
   const selectedObjectRef = useRef(selectedObject);
+  const selectedObjectsRef = useRef(selectedObjects);
   const assetsRef = useRef(assets || []);
   const onRecordHistoryRef = useRef(onRecordHistory);
   const [uniformScale, setUniformScale] = useState(false);
@@ -66,6 +69,8 @@ function Viewport({
   const [cameraType, setCameraType] = useState(() => initialCameraType || 'perspective');
   const cameraTypeRef = useRef(initialCameraType || 'perspective');
   const [isFPSMode, setIsFPSMode] = useState(false);
+  const initialTransformsRef = useRef({});
+  const hasDraggedRef = useRef(false);
 
   useEffect(() => {
     cameraTypeRef.current = cameraType;
@@ -76,12 +81,20 @@ function Viewport({
   }, [uniformScale]);
 
   useEffect(() => {
+    objectsRef.current = objects;
+  }, [objects]);
+
+  useEffect(() => {
     assetsRef.current = assets || [];
   }, [assets]);
 
   useEffect(() => {
     selectedObjectRef.current = selectedObject;
   }, [selectedObject]);
+
+  useEffect(() => {
+    selectedObjectsRef.current = selectedObjects;
+  }, [selectedObjects]);
 
   useEffect(() => {
     onRecordHistoryRef.current = onRecordHistory;
@@ -148,9 +161,14 @@ function Viewport({
     scene.add(transformControls);
     transformControlsRef.current = transformControls;
 
+    const pivotObject = new THREE.Object3D();
+    pivotObject.name = 'multiSelectPivot';
+    scene.add(pivotObject);
+
     let isTransformDragging = false;
     let hasDragged = false;
     let lastScale = new THREE.Vector3();
+    let currentScaleAxis = null;
     
     let isShiftPressed = false;
     let isRightMouseDown = false;
@@ -302,6 +320,16 @@ function Viewport({
     renderer.domElement.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('pointerlockchange', handlePointerLockChange);
 
+    const getAllDescendants = (parentId) => {
+      const descendants = [];
+      const children = objectsRef.current.filter(o => o.parentId === parentId);
+      children.forEach(child => {
+        descendants.push(child);
+        descendants.push(...getAllDescendants(child.id));
+      });
+      return descendants;
+    };
+
     transformControls.addEventListener('dragging-changed', (event) => {
       isTransformDragging = event.value;
       if (!isRightMouseDown) {
@@ -310,13 +338,161 @@ function Viewport({
       
       if (event.value) {
         hasDragged = true;
+        hasDraggedRef.current = true;
         if (onRecordHistoryRef.current) {
           onRecordHistoryRef.current();
         }
-        if (transformControls.getMode() === 'scale') {
-          const current = selectedObjectRef.current;
-          if (current && meshesRef.current[current.id]) {
-            lastScale.copy(meshesRef.current[current.id].scale);
+        
+        const attached = transformControls.object;
+        const isPivotMode = attached && attached.name === 'multiSelectPivot';
+        
+        if (isPivotMode) {
+          const allMeshes = selectedObjectsRef.current
+            .filter(o => o)
+            .map(o => meshesRef.current[o.id])
+            .filter(m => m);
+          
+          const center = new THREE.Vector3();
+          allMeshes.forEach(m => center.add(m.position));
+          center.divideScalar(allMeshes.length);
+          
+          initialTransformsRef.current = {
+            center: center.clone(),
+            pivotPosition: attached.position.clone(),
+            pivotRotation: attached.rotation.clone(),
+            pivotScale: attached.scale.clone(),
+            others: {}
+          };
+          
+          selectedObjectsRef.current.filter(o => o).forEach(obj => {
+            const mesh = meshesRef.current[obj.id];
+            if (mesh) {
+              initialTransformsRef.current.others[obj.id] = {
+                position: mesh.position.clone(),
+                rotation: mesh.rotation.clone(),
+                scale: mesh.scale.clone()
+              };
+            }
+          });
+        } else if (attached && attached.userData?.id) {
+          const allMeshes = [attached];
+          const others = selectedObjectsRef.current.filter(o => o && o.id !== attached.userData.id);
+          others.forEach(obj => {
+            const otherMesh = meshesRef.current[obj.id];
+            if (otherMesh) {
+              allMeshes.push(otherMesh);
+            }
+          });
+          
+          const center = new THREE.Vector3();
+          allMeshes.forEach(m => center.add(m.position));
+          center.divideScalar(allMeshes.length);
+          
+          const descendants = getAllDescendants(attached.userData.id);
+          
+          initialTransformsRef.current = {
+            center: center.clone(),
+            primary: {
+              id: attached.userData.id,
+              position: attached.position.clone(),
+              rotation: attached.rotation.clone(),
+              scale: attached.scale.clone()
+            },
+            others: {},
+            descendants: {}
+          };
+          
+          others.forEach(obj => {
+            const otherMesh = meshesRef.current[obj.id];
+            if (otherMesh) {
+              initialTransformsRef.current.others[obj.id] = {
+                position: otherMesh.position.clone(),
+                rotation: otherMesh.rotation.clone(),
+                scale: otherMesh.scale.clone()
+              };
+            }
+          });
+          
+          descendants.forEach(desc => {
+            const descMesh = meshesRef.current[desc.id];
+            if (descMesh) {
+              initialTransformsRef.current.descendants[desc.id] = {
+                position: descMesh.position.clone(),
+                rotation: descMesh.rotation.clone(),
+                scale: descMesh.scale.clone()
+              };
+            }
+          });
+        } else {
+          initialTransformsRef.current = {};
+        }
+        
+        if (transformControls.getMode() === 'scale' && attached) {
+          lastScale.copy(attached.scale);
+        }
+      } else {
+        const attached = transformControls.object;
+        const isPivotMode = attached && attached.name === 'multiSelectPivot';
+        
+        if (isPivotMode && initialTransformsRef.current.pivotPosition) {
+          selectedObjectsRef.current.filter(o => o).forEach(obj => {
+            const mesh = meshesRef.current[obj.id];
+            if (mesh) {
+              onUpdateObject(obj.id, {
+                position: [mesh.position.x, mesh.position.y, mesh.position.z],
+                rotation: [
+                  THREE.MathUtils.radToDeg(mesh.rotation.x),
+                  THREE.MathUtils.radToDeg(mesh.rotation.y),
+                  THREE.MathUtils.radToDeg(mesh.rotation.z)
+                ],
+                scale: [mesh.scale.x, mesh.scale.y, mesh.scale.z]
+              }, false);
+            }
+          });
+        } else if (attached && attached.userData?.id && initialTransformsRef.current.primary) {
+          const currentId = attached.userData.id;
+          
+          onUpdateObject(currentId, {
+            position: [attached.position.x, attached.position.y, attached.position.z],
+            rotation: [
+              THREE.MathUtils.radToDeg(attached.rotation.x),
+              THREE.MathUtils.radToDeg(attached.rotation.y),
+              THREE.MathUtils.radToDeg(attached.rotation.z)
+            ],
+            scale: [attached.scale.x, attached.scale.y, attached.scale.z]
+          }, false);
+          
+          const others = selectedObjectsRef.current.filter(o => o && o.id !== currentId);
+          others.forEach(obj => {
+            const otherMesh = meshesRef.current[obj.id];
+            if (otherMesh) {
+              onUpdateObject(obj.id, {
+                position: [otherMesh.position.x, otherMesh.position.y, otherMesh.position.z],
+                rotation: [
+                  THREE.MathUtils.radToDeg(otherMesh.rotation.x),
+                  THREE.MathUtils.radToDeg(otherMesh.rotation.y),
+                  THREE.MathUtils.radToDeg(otherMesh.rotation.z)
+                ],
+                scale: [otherMesh.scale.x, otherMesh.scale.y, otherMesh.scale.z]
+              }, false);
+            }
+          });
+          
+          if (initialTransformsRef.current.descendants) {
+            Object.keys(initialTransformsRef.current.descendants).forEach(descId => {
+              const descMesh = meshesRef.current[descId];
+              if (descMesh) {
+                onUpdateObject(descId, {
+                  position: [descMesh.position.x, descMesh.position.y, descMesh.position.z],
+                  rotation: [
+                    THREE.MathUtils.radToDeg(descMesh.rotation.x),
+                    THREE.MathUtils.radToDeg(descMesh.rotation.y),
+                    THREE.MathUtils.radToDeg(descMesh.rotation.z)
+                  ],
+                  scale: [descMesh.scale.x, descMesh.scale.y, descMesh.scale.z]
+                }, false);
+              }
+            });
           }
         }
       }
@@ -325,38 +501,198 @@ function Viewport({
     transformControls.addEventListener('change', () => {
       if (!isTransformDragging) return;
       
-      const current = selectedObjectRef.current;
-      if (!current || !meshesRef.current[current.id]) return;
-
-      const mesh = meshesRef.current[current.id];
+      const attached = transformControls.object;
+      if (!attached) return;
+      
+      const isPivotMode = attached.name === 'multiSelectPivot';
       const mode = transformControls.getMode();
+      const initial = initialTransformsRef.current;
 
-      if (mode === 'translate') {
-        onUpdateObject(current.id, {
-          position: [mesh.position.x, mesh.position.y, mesh.position.z]
-        }, false);
-      } else if (mode === 'rotate') {
-        onUpdateObject(current.id, {
-          rotation: [
-            THREE.MathUtils.radToDeg(mesh.rotation.x),
-            THREE.MathUtils.radToDeg(mesh.rotation.y),
-            THREE.MathUtils.radToDeg(mesh.rotation.z)
-          ]
-        }, false);
-      } else if (mode === 'scale') {
+      if (isPivotMode && initial.pivotPosition) {
+        if (mode === 'translate') {
+          const deltaPos = attached.position.clone().sub(initial.pivotPosition);
+          
+          Object.keys(initial.others).forEach(objId => {
+            const mesh = meshesRef.current[objId];
+            const meshInitial = initial.others[objId];
+            if (mesh && meshInitial) {
+              mesh.position.copy(meshInitial.position).add(deltaPos);
+            }
+          });
+        } else if (mode === 'rotate' && initial.center) {
+          const deltaQuat = new THREE.Quaternion();
+          const initialQuat = new THREE.Quaternion().setFromEuler(initial.pivotRotation);
+          const currentQuat = new THREE.Quaternion().setFromEuler(attached.rotation);
+          deltaQuat.multiplyQuaternions(currentQuat, initialQuat.clone().invert());
+          
+          Object.keys(initial.others).forEach(objId => {
+            const mesh = meshesRef.current[objId];
+            const meshInitial = initial.others[objId];
+            if (mesh && meshInitial) {
+              const pos = meshInitial.position.clone().sub(initial.center);
+              pos.applyQuaternion(deltaQuat);
+              pos.add(initial.center);
+              mesh.position.copy(pos);
+              
+              const meshInitialQuat = new THREE.Quaternion().setFromEuler(meshInitial.rotation);
+              const newQuat = deltaQuat.clone().multiply(meshInitialQuat);
+              mesh.quaternion.copy(newQuat);
+            }
+          });
+        } else if (mode === 'scale' && initial.center) {
+          const scaleRatio = new THREE.Vector3(
+            attached.scale.x / initial.pivotScale.x,
+            attached.scale.y / initial.pivotScale.y,
+            attached.scale.z / initial.pivotScale.z
+          );
+
+          Object.keys(initial.others).forEach(objId => {
+            const mesh = meshesRef.current[objId];
+            const meshInitial = initial.others[objId];
+            if (mesh && meshInitial) {
+              const offset = meshInitial.position.clone().sub(initial.center);
+              offset.x *= scaleRatio.x;
+              offset.y *= scaleRatio.y;
+              offset.z *= scaleRatio.z;
+              mesh.position.copy(initial.center).add(offset);
+
+              mesh.scale.x = meshInitial.scale.x * scaleRatio.x;
+              mesh.scale.y = meshInitial.scale.y * scaleRatio.y;
+              mesh.scale.z = meshInitial.scale.z * scaleRatio.z;
+            }
+          });
+        }
+        return;
+      }
+      
+      if (!attached.userData?.id) return;
+      
+      const currentId = attached.userData.id;
+      const current = objectsRef.current.find(obj => obj.id === currentId);
+      if (!current) return;
+
+      const mesh = attached;
+
+      if (mode === 'translate' && initial.primary) {
+        const deltaPos = mesh.position.clone().sub(initial.primary.position);
+        
+        Object.keys(initial.others).forEach(objId => {
+          const otherMesh = meshesRef.current[objId];
+          const otherInitial = initial.others[objId];
+          if (otherMesh && otherInitial) {
+            otherMesh.position.copy(otherInitial.position).add(deltaPos);
+          }
+        });
+        
+        if (initial.descendants) {
+          Object.keys(initial.descendants).forEach(descId => {
+            const descMesh = meshesRef.current[descId];
+            const descInitial = initial.descendants[descId];
+            if (descMesh && descInitial) {
+              descMesh.position.copy(descInitial.position).add(deltaPos);
+            }
+          });
+        }
+      } else if (mode === 'rotate' && initial.primary && initial.center) {
+        const deltaQuat = new THREE.Quaternion();
+        const initialQuat = new THREE.Quaternion().setFromEuler(initial.primary.rotation);
+        const currentQuat = new THREE.Quaternion().setFromEuler(mesh.rotation);
+        deltaQuat.multiplyQuaternions(currentQuat, initialQuat.clone().invert());
+        
+        const primaryPos = initial.primary.position.clone().sub(initial.center);
+        primaryPos.applyQuaternion(deltaQuat);
+        primaryPos.add(initial.center);
+        mesh.position.copy(primaryPos);
+        
+        Object.keys(initial.others).forEach(objId => {
+          const otherMesh = meshesRef.current[objId];
+          const otherInitial = initial.others[objId];
+          if (otherMesh && otherInitial) {
+            const pos = otherInitial.position.clone().sub(initial.center);
+            pos.applyQuaternion(deltaQuat);
+            pos.add(initial.center);
+            otherMesh.position.copy(pos);
+            
+            const otherInitialQuat = new THREE.Quaternion().setFromEuler(otherInitial.rotation);
+            const newQuat = deltaQuat.clone().multiply(otherInitialQuat);
+            otherMesh.quaternion.copy(newQuat);
+          }
+        });
+        
+        if (initial.descendants) {
+          Object.keys(initial.descendants).forEach(descId => {
+            const descMesh = meshesRef.current[descId];
+            const descInitial = initial.descendants[descId];
+            if (descMesh && descInitial) {
+              const pos = descInitial.position.clone().sub(initial.center);
+              pos.applyQuaternion(deltaQuat);
+              pos.add(initial.center);
+              descMesh.position.copy(pos);
+              
+              const descInitialQuat = new THREE.Quaternion().setFromEuler(descInitial.rotation);
+              const newQuat = deltaQuat.clone().multiply(descInitialQuat);
+              descMesh.quaternion.copy(newQuat);
+            }
+          });
+        }
+      } else if (mode === 'scale' && initial.primary && initial.center) {
         if (uniformScaleRef.current) {
           const avgScale = (mesh.scale.x + mesh.scale.y + mesh.scale.z) / 3;
           mesh.scale.set(avgScale, avgScale, avgScale);
         }
-        onUpdateObject(current.id, {
-          scale: [mesh.scale.x, mesh.scale.y, mesh.scale.z]
-        }, false);
-      }
-
-      if (mesh.material && mesh.material.color) {
-        const colorHex = '#' + mesh.material.color.getHexString();
-        if (colorHex !== (selectedObjectRef.current?.color || '').toString()) {
-          onUpdateObject(current.id, { color: colorHex }, false);
+        
+        const rawScaleRatio = new THREE.Vector3(
+          mesh.scale.x / initial.primary.scale.x,
+          mesh.scale.y / initial.primary.scale.y,
+          mesh.scale.z / initial.primary.scale.z
+        );
+        
+        const scaleRatio = new THREE.Vector3(1, 1, 1);
+        const threshold = 0.001;
+        
+        if (Math.abs(rawScaleRatio.x - 1) > threshold) scaleRatio.x = rawScaleRatio.x;
+        if (Math.abs(rawScaleRatio.y - 1) > threshold) scaleRatio.y = rawScaleRatio.y;
+        if (Math.abs(rawScaleRatio.z - 1) > threshold) scaleRatio.z = rawScaleRatio.z;
+        
+        const primaryPos = initial.primary.position.clone().sub(initial.center);
+        primaryPos.multiply(scaleRatio);
+        primaryPos.add(initial.center);
+        mesh.position.copy(primaryPos);
+        
+        Object.keys(initial.others).forEach(objId => {
+          const otherMesh = meshesRef.current[objId];
+          const otherInitial = initial.others[objId];
+          if (otherMesh && otherInitial) {
+            const pos = otherInitial.position.clone().sub(initial.center);
+            pos.multiply(scaleRatio);
+            pos.add(initial.center);
+            otherMesh.position.copy(pos);
+            
+            otherMesh.scale.set(
+              otherInitial.scale.x * scaleRatio.x,
+              otherInitial.scale.y * scaleRatio.y,
+              otherInitial.scale.z * scaleRatio.z
+            );
+          }
+        });
+        
+        if (initial.descendants) {
+          Object.keys(initial.descendants).forEach(descId => {
+            const descMesh = meshesRef.current[descId];
+            const descInitial = initial.descendants[descId];
+            if (descMesh && descInitial) {
+              const pos = descInitial.position.clone().sub(initial.center);
+              pos.multiply(scaleRatio);
+              pos.add(initial.center);
+              descMesh.position.copy(pos);
+              
+              descMesh.scale.set(
+                descInitial.scale.x * scaleRatio.x,
+                descInitial.scale.y * scaleRatio.y,
+                descInitial.scale.z * scaleRatio.z
+              );
+            }
+          });
         }
       }
     });
@@ -1078,34 +1414,69 @@ function Viewport({
       }
     });
 
-    if (selectedObject && meshesRef.current[selectedObject.id]) {
-      const mesh = meshesRef.current[selectedObject.id];
-      if (mesh.parent === sceneRef.current) {
-        transformControlsRef.current.attach(mesh);
+    const objectsToHighlight = selectedObjects.length > 1 
+      ? selectedObjects.filter(o => o) 
+      : (selectedObject ? [selectedObject] : []);
 
-        if (mesh.userData.isModel) {
-          const assetSize = mesh.userData.assetSize || new THREE.Vector3(1, 1, 1);
-          
-          const outline = new THREE.LineSegments(
-            new THREE.EdgesGeometry(new THREE.BoxGeometry(assetSize.x, assetSize.y, assetSize.z)),
-            new THREE.LineBasicMaterial({ color: 0x4a90d9, linewidth: 2 })
-          );
-          mesh.add(outline);
-          mesh.userData.outline = outline;
-        } else {
-          const outline = new THREE.LineSegments(
-            new THREE.EdgesGeometry(mesh.geometry),
-            new THREE.LineBasicMaterial({ color: 0x4a90d9, linewidth: 2 })
-          );
-          outline.scale.setScalar(1.01);
-          mesh.add(outline);
-          mesh.userData.outline = outline;
-        }
+    objectsToHighlight.forEach((obj, index) => {
+      const mesh = meshesRef.current[obj.id];
+      if (!mesh) return;
+
+      const isPrimary = index === 0;
+      
+      if (mesh.userData.isModel) {
+        const assetSize = mesh.userData.assetSize || new THREE.Vector3(1, 1, 1);
+        
+        const outline = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(assetSize.x, assetSize.y, assetSize.z)),
+          new THREE.LineBasicMaterial({ 
+            color: isPrimary ? 0x4a90d9 : 0x66aaff, 
+            linewidth: 2 
+          })
+        );
+        mesh.add(outline);
+        mesh.userData.outline = outline;
+      } else {
+        const outline = new THREE.LineSegments(
+          new THREE.EdgesGeometry(mesh.geometry),
+          new THREE.LineBasicMaterial({ 
+            color: isPrimary ? 0x4a90d9 : 0x66aaff, 
+            linewidth: 2 
+          })
+        );
+        outline.scale.setScalar(1.01);
+        mesh.add(outline);
+        mesh.userData.outline = outline;
+      }
+    });
+
+    if (objectsToHighlight.length === 0) {
+      transformControlsRef.current.detach();
+    } else if (objectsToHighlight.length === 1) {
+      const mesh = meshesRef.current[objectsToHighlight[0].id];
+      if (mesh && mesh.parent === sceneRef.current) {
+        transformControlsRef.current.attach(mesh);
       }
     } else {
-      transformControlsRef.current.detach();
+      const center = new THREE.Vector3();
+      objectsToHighlight.forEach(obj => {
+        const mesh = meshesRef.current[obj.id];
+        if (mesh) center.add(mesh.position);
+      });
+      center.divideScalar(objectsToHighlight.length);
+      
+      const primaryMesh = meshesRef.current[objectsToHighlight[0].id];
+      if (primaryMesh && primaryMesh.parent === sceneRef.current) {
+        const pivot = sceneRef.current.getObjectByName('multiSelectPivot');
+        if (pivot) {
+          pivot.position.copy(center);
+          pivot.rotation.copy(primaryMesh.rotation);
+          pivot.scale.copy(primaryMesh.scale);
+          transformControlsRef.current.attach(pivot);
+        }
+      }
     }
-  }, [selectedObject]);
+  }, [selectedObject, selectedObjects, currentTool]);
 
   useEffect(() => {
     if (!containerRef.current || !rendererRef.current) return;
@@ -1115,6 +1486,11 @@ function Viewport({
     const mouse = new THREE.Vector2();
 
     const handleClick = (e) => {
+      if (hasDraggedRef.current) {
+        hasDraggedRef.current = false;
+        return;
+      }
+      
       const rect = canvas.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;

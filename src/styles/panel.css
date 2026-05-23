@@ -149,6 +149,11 @@
   min-height: 0;
 }
 
+.hierarchy-panel .panel-content,
+.prefabs-panel .panel-content {
+  padding: 4px 0;
+}
+
 .prefabs-panel {
   flex: 1;
   min-height: 100px;
@@ -176,12 +181,13 @@
 .prefab-item {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
-  margin-bottom: 2px;
-  border-radius: 4px;
+  padding: 3px 6px;
+  margin: 0;
+  border-radius: 0;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color 0.1s;
   gap: 6px;
+  border-left: 2px solid transparent;
 }
 
 .prefab-item:hover {
@@ -190,6 +196,7 @@
 
 .prefab-item.selected {
   background-color: var(--accent);
+  border-left-color: var(--accent-active);
 }
 
 .prefab-item-icon {
@@ -270,21 +277,22 @@
   min-width: 100px;
   z-index: 1000;
   overflow: hidden;
+  padding: 2px 0;
 }
 
 .add-menu-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   font-size: 11px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.1s;
 }
 
 .add-menu-item:hover {
-  background: var(--bg-hover);
+  background: var(--accent);
 }
 
 .add-menu-item-icon {
