@@ -1,6 +1,6 @@
 # MiniCraft 小游戏
 
-Minecraft 风格的 3D 方块游戏，作为 Astra 3D Engine 的演示项目。
+Minecraft 风格的 3D 方块游戏，作为 Astra 3D Engine 的内置彩蛋小游戏。
 
 ## 目录结构
 
@@ -144,10 +144,6 @@ function checkCollision(position, velocity) {
 ```
 
 ## 启动方式
-
-### 在编辑器中启动
-
-Alt + 点击 Logo 打开小游戏窗口。
 
 ### 直接访问
 
