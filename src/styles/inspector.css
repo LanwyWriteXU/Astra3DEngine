@@ -104,6 +104,13 @@
   min-width: 0;
 }
 
+.inspector-vector2 {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
 .vector-input {
   flex: 1;
   display: flex;

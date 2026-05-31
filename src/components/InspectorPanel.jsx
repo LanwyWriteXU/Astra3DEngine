@@ -250,6 +250,25 @@ function InspectorPanel({
     onUpdateObject(selectedObject.id, { textureId: textureId || null });
   };
 
+  /**
+   * UV变换处理函数
+   * 
+   * UV缩放控制纹理在物体上的重复次数，值越大纹理越小（重复更多）。
+   * UV偏移控制纹理在物体上的位置，用于调整纹理的起始位置。
+   * 
+   * @param {string} property - 'uvScale' 或 'uvOffset'
+   * @param {number} index - 0(U) 或 1(V)
+   * @param {string} value - 输入值
+   */
+  const handleUVChange = (property, index, value) => {
+    if (!selectedObject) return;
+    const newValue = parseFloat(value) || 0;
+    const currentUV = selectedObject[property] || [1, 1];
+    const newUV = [...currentUV];
+    newUV[index] = newValue;
+    onUpdateObject(selectedObject.id, { [property]: newUV });
+  };
+
   const handleParentChange = (parentId) => {
     console.log('=== handleParentChange ===');
     console.log('parentId:', parentId, 'selectedObject:', selectedObject?.id);
@@ -458,6 +477,47 @@ function InspectorPanel({
                   <option key={asset.id} value={asset.id}>{asset.name}</option>
                 ))}
               </select>
+            </div>
+          )}
+          
+          {(selectedObject.type === 'sphere' || selectedObject.type === 'plane') && selectedObject.textureId != null && (
+            <div className="inspector-section">
+              <div className="inspector-section-title">{msg('inspector.uvTransform')}</div>
+              <div className="inspector-row">
+                <label className="inspector-label">{msg('inspector.uvScale')}</label>
+                <div className="inspector-vector2">
+                  {['U', 'V'].map((axis, i) => (
+                    <div key={axis} className="vector-input">
+                      <span className="vector-label">{axis}</span>
+                      <input
+                        type="number"
+                        className="inspector-input"
+                        value={(selectedObject.uvScale || [1, 1])[i]}
+                        onChange={(e) => handleUVChange('uvScale', i, e.target.value)}
+                        step="0.1"
+                        min="0.01"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="inspector-row">
+                <label className="inspector-label">{msg('inspector.uvOffset')}</label>
+                <div className="inspector-vector2">
+                  {['U', 'V'].map((axis, i) => (
+                    <div key={axis} className="vector-input">
+                      <span className="vector-label">{axis}</span>
+                      <input
+                        type="number"
+                        className="inspector-input"
+                        value={(selectedObject.uvOffset || [0, 0])[i]}
+                        onChange={(e) => handleUVChange('uvOffset', i, e.target.value)}
+                        step="0.1"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

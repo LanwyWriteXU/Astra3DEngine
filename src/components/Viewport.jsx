@@ -513,6 +513,7 @@ function Viewport({
      * 根据之前收集的相对变换，重新计算每个后代的世界变换。
      * 注意：必须按照层级顺序处理，从顶层到底层，
      * 因为子对象的计算依赖于父对象的新变换。
+     * 我说了，孩子应该跟着父亲走！
      * 
      * @param {number} parentId - 父对象 ID
      * @param {Map<number, Object>} relativeTransforms - 后代 ID -> 相对变换的映射
@@ -1484,7 +1485,15 @@ function Viewport({
             if (obj.textureId) {
               const textureAsset = assetsRef.current.find(a => a.id === obj.textureId);
               if (textureAsset && textureAsset.texture) {
-                mesh.material.map = textureAsset.texture;
+                const texture = textureAsset.texture.clone();
+                texture.needsUpdate = true;
+                
+                const uvScale = obj.uvScale || [1, 1];
+                const uvOffset = obj.uvOffset || [0, 0];
+                texture.repeat.set(uvScale[0], uvScale[1]);
+                texture.offset.set(uvOffset[0], uvOffset[1]);
+                
+                mesh.material.map = texture;
                 mesh.material.needsUpdate = true;
               } else {
                 mesh.material.map = null;
@@ -1564,8 +1573,16 @@ function Viewport({
         } else if ((obj.type === 'sphere' || obj.type === 'plane') && obj.textureId) {
           const textureAsset = assetsRef.current.find(a => a.id === obj.textureId);
           if (textureAsset && textureAsset.texture) {
+            const texture = textureAsset.texture.clone();
+            texture.needsUpdate = true;
+            
+            const uvScale = obj.uvScale || [1, 1];
+            const uvOffset = obj.uvOffset || [0, 0];
+            texture.repeat.set(uvScale[0], uvScale[1]);
+            texture.offset.set(uvOffset[0], uvOffset[1]);
+            
             material = new THREE.MeshStandardMaterial({
-              map: textureAsset.texture,
+              map: texture,
               color: obj.color || 0x4a90d9,
               metalness: 0.3,
               roughness: 0.7

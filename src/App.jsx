@@ -314,7 +314,9 @@ function AppContent() {
             front: null,
             back: null
           } : undefined,
-          textureId: (type === 'sphere' || type === 'plane') ? null : undefined
+          textureId: (type === 'sphere' || type === 'plane') ? null : undefined,
+          uvScale: (type === 'sphere' || type === 'plane') ? [1, 1] : undefined,
+          uvOffset: (type === 'sphere' || type === 'plane') ? [0, 0] : undefined
         };
       }
       
@@ -393,6 +395,8 @@ function AppContent() {
         asset.url,
         (texture) => {
           texture.colorSpace = THREE.SRGBColorSpace;
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
           asset.texture = texture;
           setAssets(prev => [...prev, asset]);
         },
